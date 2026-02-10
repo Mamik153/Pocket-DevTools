@@ -1,0 +1,18 @@
+# Frontend
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/.env
+frontend/*.tsbuildinfo
+
+# Backend
+backend/.venv
+backend/generated_audio/*.wav
+backend/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache
+
+# OS / editor
+.DS_Store
+.idea
+.vscode
