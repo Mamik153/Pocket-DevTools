@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Download, FileText, Loader2, Sparkles, Volume2 } from "lucide-react";
 import { CustomAudioPlayer } from "@/components/CustomAudioPlayer";
+import logo from "../assets/logo.jpeg";
 import { MarkdownPreview } from "@/components/MarkdownPreview";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -178,15 +179,10 @@ export default function App() {
         >
           <div className="flex items-center gap-3">
             <div className="rounded-lg border border-border/70 bg-card/60 p-2">
-              <Sparkles className="h-5 w-5 text-primary" />
+              <img src={logo} alt="Logo" className="h-5 w-5" />
             </div>
             <div>
-              <h1 className="text-xl font-semibold md:text-2xl">
-                Markdown TTS Studio
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Paste markdown, preview instantly, and generate speech.
-              </p>
+              <h1 className="text-xl font-semibold md:text-2xl">AudioScribe</h1>
             </div>
           </div>
           <Badge variant="outline" className="hidden md:inline-flex">
