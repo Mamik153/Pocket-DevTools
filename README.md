@@ -1,30 +1,51 @@
-# Markdown TTS Studio
+# Pocket DevTools (Formerly Markdown TTS Studio)
 
-Markdown TTS Studio is a full-screen markdown workspace that turns markdown input into generated speech.
-It also includes a DevTools Hub with quick utilities for common developer workflows.
+Pocket DevTools is now a multi-tool developer workspace.  
+This project started as a markdown-to-speech app and has shifted into a broader utility hub where Audioscribe is one tool among many.
 
-- React + TypeScript + Vite frontend
-- Tailwind + shadcn-style UI primitives
-- Framer Motion animations + Lucide icons
-- Python FastAPI backend with async Text-to-Speech jobs
-- Open-source Coqui TTS model (`tts_models/en/ljspeech/tacotron2-DDC`)
+## Major Shift
+
+- **Then:** single-purpose markdown + TTS workflow.
+- **Now:** a unified developer toolkit with multiple utilities, shared design system, and floating productivity widgets.
+
+## What You Get
+
+- 13+ frontend tools in one interface (JSON, auth, encoding, regex, timestamps, passwords, URLs, and more).
+- Audioscribe with async text-to-speech job processing.
+- Floating top-right widgets:
+  - INR conversion with live rates and bidirectional conversion.
+  - Multi-timezone world clock.
+- Built-in URL shortener + event metrics APIs for product instrumentation.
+- Modern UI stack with motion, shadcn-style primitives, and responsive layouts.
+
+## Tech Stack
+
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Framer Motion
+- **Backend:** FastAPI (Python 3.11+), async job flow for TTS
+- **TTS Model:** Coqui (`tts_models/en/ljspeech/tacotron2-DDC`)
 
 ## Project Structure
 
 ```text
 .
 ├── frontend
+│   ├── src/components
+│   ├── src/routes
+│   ├── src/config
+│   └── src/components/widgets
 └── backend
+    ├── app
+    └── data
 ```
 
-## Prerequisites
+## Local Development
+
+### Prerequisites
 
 - Node.js 18+ and npm
 - Python 3.11+
 
-## Local Development
-
-Start backend:
+### Run Backend
 
 ```bash
 cd backend
@@ -34,16 +55,14 @@ pip install -r requirements.txt
 ./dev.sh
 ```
 
-Alternative backend run command without activating the environment:
+Alternative (without activating venv):
 
 ```bash
 cd backend
 .venv/bin/python -m uvicorn app.main:app --reload --port 8000
 ```
 
-If you start Uvicorn manually, use `app.main:app` (or legacy-compatible `services.main:app`) from the `backend` directory.
-
-Start frontend in another terminal:
+### Run Frontend
 
 ```bash
 cd frontend
@@ -51,7 +70,7 @@ npm install
 npm run dev
 ```
 
-Optional frontend environment variable:
+Optional:
 
 ```bash
 cp .env.example .env
@@ -59,7 +78,7 @@ cp .env.example .env
 
 `VITE_API_URL` defaults to `http://localhost:8000`.
 
-Backend health check:
+Health check:
 
 ```bash
 curl http://localhost:8000/health
@@ -67,19 +86,19 @@ curl http://localhost:8000/health
 
 ## API Overview
 
-- `GET /health`: API health status
-- `POST /api/tts/jobs`: create a TTS job from markdown
-- `GET /api/tts/jobs/{job_id}`: get job status
-- `GET /api/tts/audio/{job_id}`: download generated WAV audio
-- `POST /api/short-links`: create a short link
-- `GET /api/short-links`: list recent short links
-- `GET /api/short-links/{code}`: get one short link
-- `DELETE /api/short-links`: clear all short links
-- `GET /s/{code}`: redirect to the original URL
+- `GET /health` - API health status
+- `POST /api/tts/jobs` - create TTS job from markdown
+- `GET /api/tts/jobs/{job_id}` - get TTS job status
+- `GET /api/tts/audio/{job_id}` - download generated WAV audio
+- `POST /api/short-links` - create short link
+- `GET /api/short-links` - list recent short links
+- `GET /api/short-links/{code}` - fetch short link metadata
+- `DELETE /api/short-links` - clear short links
+- `POST /api/metrics/events` - track product event
+- `GET /api/metrics/events` - list event counters
+- `GET /s/{code}` - redirect to original URL
 
 ## Frontend Tools
-
-The home page exposes the following tools:
 
 - Audioscribe
 - JSON Beautifier
@@ -90,42 +109,40 @@ The home page exposes the following tools:
 - URL Shortener
 - JWT Decode
 - UUID Generator
+- Password Generator
 - Base64 Encoder/Decoder
 - Regex Tester
 - Timestamp Converter
 
-Tool metadata is maintained in `frontend/src/config/tools.ts`, with routes defined in `frontend/src/router.tsx`.
+Tool catalog: `frontend/src/config/tools.ts`  
+Routes: `frontend/src/router.tsx`
 
-## Resources Section
-
-The home page includes a `Resources` section with curated links grouped by:
-
-- UI Components
-- AI Frameworks
-- Online Compilers
-- Reading Material
-
-Resource links are maintained in `frontend/src/config/resources.ts`.
-
-## TTS Flow
+## Audioscribe Flow
 
 1. Frontend sends markdown to `POST /api/tts/jobs`.
-2. Backend queues and processes TTS in a background worker.
-3. Frontend polls `GET /api/tts/jobs/{id}` every 2 seconds.
-4. When status is `done`, frontend loads audio from `GET /api/tts/audio/{id}`.
+2. Backend queues and processes TTS.
+3. Frontend polls `GET /api/tts/jobs/{id}`.
+4. On completion, audio is loaded from `GET /api/tts/audio/{id}`.
+
+Share snapshot support:
+
+- Users can create short links for Audioscribe markdown snapshots.
+- Shared links open Audioscribe with pre-filled content.
+- Events like `audioscribe_share_created` and `audioscribe_share_opened` are tracked via `/api/metrics/events`.
+
+## Persistence Notes
+
+- Short links: `backend/data/short_links.json`
+- Event metrics: `backend/data/event_metrics.json`
+- `SHORTENER_BASE_URL` can override generated short-link base URL.
+- First TTS request may be slower due to model warm-up/download.
 
 ## Community
 
-- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Code of conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
-- Security policy: [SECURITY.md](SECURITY.md)
-
-## Notes
-
-- The first TTS request can be slow because model download and warm-up happen lazily.
-- URL short links are persisted in `backend/data/short_links.json`.
-- Set `SHORTENER_BASE_URL` to override the generated public short-link base URL.
+- [CONTRIBUTING.md](CONTRIBUTING.md)
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- [SECURITY.md](SECURITY.md)
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE).

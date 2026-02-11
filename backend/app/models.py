@@ -6,6 +6,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 JobStatus = Literal["queued", "processing", "done", "error"]
+EventName = Literal["audioscribe_share_created", "audioscribe_share_opened"]
 
 
 class CreateTtsJobRequest(BaseModel):
@@ -36,3 +37,13 @@ class ShortLinkResponse(BaseModel):
     click_count: int
     created_at: datetime
     last_accessed_at: datetime | None = None
+
+
+class TrackEventRequest(BaseModel):
+    name: EventName
+
+
+class EventMetricResponse(BaseModel):
+    name: EventName
+    count: int
+    last_tracked_at: datetime | None = None
