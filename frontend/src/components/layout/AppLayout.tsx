@@ -3,6 +3,7 @@ import { Wrench } from "lucide-react";
 import logo from "../../../assets/logo.jpeg";
 import { tools } from "@/config/tools";
 import { cn } from "@/lib/utils";
+import { FloatingWidgets } from "@/components/widgets/FloatingWidgets";
 
 const navLinkClass =
   "rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-secondary/50 hover:text-foreground";
@@ -74,6 +75,8 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      <FloatingWidgets />
     </div>
   );
 }

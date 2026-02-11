@@ -1,12 +1,13 @@
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Download, FileText, Loader2, Volume2 } from "lucide-react";
+import { Copy, Download, ExternalLink, FileText, Loader2, Share2, Volume2 } from "lucide-react";
 import { CustomAudioPlayer } from "@/components/CustomAudioPlayer";
 import { MarkdownPreview } from "@/components/MarkdownPreview";
 import { ToolPageLayout } from "@/components/layout/ToolPageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useTtsJob } from "@/hooks/useTtsJob";
 import type { TtsJobStatus } from "@/types/tts";
@@ -29,6 +30,55 @@ console.log(message);
 `;
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+const SHARE_MARKDOWN_PARAM = "md";
+const SHARE_SOURCE_PARAM = "via";
+const SHARE_SOURCE_VALUE = "audioscribe-share";
+const MAX_SHARE_MARKDOWN_LENGTH = 4000;
+
+type ShareEventName = "audioscribe_share_created" | "audioscribe_share_opened";
+
+interface ApiErrorBody {
+  detail?: string;
+}
+
+interface ShortLinkApiResponse {
+  short_url: string;
+}
+
+const parseApiError = async (response: Response, fallbackMessage: string) => {
+  try {
+    const payload = (await response.json()) as ApiErrorBody;
+    return payload.detail ?? fallbackMessage;
+  } catch {
+    return fallbackMessage;
+  }
+};
+
+const toBase64Url = (value: string) => value.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+
+const fromBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  const padding = normalized.length % 4;
+  if (padding === 0) return normalized;
+  return normalized.padEnd(normalized.length + (4 - padding), "=");
+};
+
+const encodeMarkdownForShare = (markdown: string) => {
+  const bytes = new TextEncoder().encode(markdown);
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    const chunk = bytes.subarray(index, index + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+  return toBase64Url(window.btoa(binary));
+};
+
+const decodeMarkdownFromShare = (payload: string) => {
+  const binary = window.atob(fromBase64Url(payload));
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
+};
 
 const statusLabel: Record<TtsJobStatus, { text: string; variant: "default" | "warning" | "success" | "destructive" }> = {
   queued: { text: "Queued", variant: "default" },
@@ -43,9 +93,62 @@ const statusLabel: Record<TtsJobStatus, { text: string; variant: "default" | "wa
 export function AudioscribePage() {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [shareUrl, setShareUrl] = useState("");
+  const [shareError, setShareError] = useState<string | null>(null);
+  const [shareNotice, setShareNotice] = useState<string | null>(null);
+  const [isCreatingShareLink, setIsCreatingShareLink] = useState(false);
+  const [hasCopiedShareLink, setHasCopiedShareLink] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
+  const hasTrackedShareOpenRef = useRef(false);
+  const copyStateTimeoutRef = useRef<number | null>(null);
 
   const { activeJob, audioUrl, isSubmitting, requestError, createJob, clearJob } = useTtsJob(API_BASE_URL);
+
+  const trackEvent = useCallback(async (name: ShareEventName) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/metrics/events`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ name })
+      });
+    } catch {
+      // Tracking should never block the user flow.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const params = new URLSearchParams(window.location.search);
+    const encodedMarkdown = params.get(SHARE_MARKDOWN_PARAM);
+    if (encodedMarkdown) {
+      try {
+        const decoded = decodeMarkdownFromShare(encodedMarkdown);
+        if (decoded.trim()) {
+          setMarkdown(decoded);
+          setShareNotice("Loaded shared markdown snapshot.");
+        }
+      } catch {
+        setShareError("This shared link is invalid.");
+      }
+    }
+
+    const source = params.get(SHARE_SOURCE_PARAM);
+    if (source === SHARE_SOURCE_VALUE && !hasTrackedShareOpenRef.current) {
+      hasTrackedShareOpenRef.current = true;
+      void trackEvent("audioscribe_share_opened");
+    }
+  }, [trackEvent]);
+
+  useEffect(() => {
+    return () => {
+      if (copyStateTimeoutRef.current !== null) {
+        window.clearTimeout(copyStateTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const wordCount = useMemo(() => {
     const clean = markdown.trim();
@@ -56,6 +159,65 @@ export function AudioscribePage() {
   const onGenerate = async () => {
     if (!markdown.trim()) return;
     await createJob(markdown);
+  };
+
+  const onCreateShareLink = async () => {
+    if (!markdown.trim()) return;
+    if (markdown.length > MAX_SHARE_MARKDOWN_LENGTH) {
+      setShareError(`Keep markdown under ${MAX_SHARE_MARKDOWN_LENGTH.toLocaleString()} characters to share.`);
+      setShareNotice(null);
+      return;
+    }
+    if (typeof window === "undefined") return;
+
+    setIsCreatingShareLink(true);
+    setShareError(null);
+    setShareNotice(null);
+    setHasCopiedShareLink(false);
+
+    try {
+      const destination = new URL("/audioscribe", window.location.origin);
+      destination.searchParams.set(SHARE_MARKDOWN_PARAM, encodeMarkdownForShare(markdown));
+      destination.searchParams.set(SHARE_SOURCE_PARAM, SHARE_SOURCE_VALUE);
+
+      const response = await fetch(`${API_BASE_URL}/api/short-links`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          long_url: destination.toString()
+        })
+      });
+      if (!response.ok) {
+        throw new Error(await parseApiError(response, "Unable to create a share link."));
+      }
+
+      const payload = (await response.json()) as ShortLinkApiResponse;
+      setShareUrl(payload.short_url);
+      setShareNotice("Share link ready. Send it to let others load this markdown instantly.");
+      void trackEvent("audioscribe_share_created");
+    } catch (error) {
+      setShareUrl("");
+      setShareError(error instanceof Error ? error.message : "Unable to create a share link.");
+    } finally {
+      setIsCreatingShareLink(false);
+    }
+  };
+
+  const onCopyShareLink = async () => {
+    if (!shareUrl || typeof window === "undefined") return;
+    try {
+      await window.navigator.clipboard.writeText(shareUrl);
+      setHasCopiedShareLink(true);
+      setShareError(null);
+      if (copyStateTimeoutRef.current !== null) {
+        window.clearTimeout(copyStateTimeoutRef.current);
+      }
+      copyStateTimeoutRef.current = window.setTimeout(() => setHasCopiedShareLink(false), 1800);
+    } catch {
+      setShareError("Unable to copy automatically. Copy the link manually.");
+    }
   };
 
   const onDownloadPdf = async () => {
@@ -168,7 +330,10 @@ export function AudioscribePage() {
             <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto pr-2">
               <Textarea
                 value={markdown}
-                onChange={(event) => setMarkdown(event.target.value)}
+                onChange={(event) => {
+                  setMarkdown(event.target.value);
+                  setShareNotice(null);
+                }}
                 placeholder="Paste markdown..."
                 className="mt-1 min-h-[360px] flex-1 resize-y font-mono text-sm"
                 aria-label="Markdown input"
@@ -202,17 +367,44 @@ export function AudioscribePage() {
                 {requestError ? <p className="text-rose-700">{requestError}</p> : null}
                 {activeJob?.error ? <p className="text-rose-700">{activeJob.error}</p> : null}
                 {audioUrl ? (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <CustomAudioPlayer src={audioUrl} />
-                    <Button variant="ghost" size="sm" onClick={clearJob}>
-                      Clear Job
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={clearJob}>
+                        Clear Job
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => void onCreateShareLink()} disabled={isCreatingShareLink}>
+                        {isCreatingShareLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
+                        Share Snapshot
+                      </Button>
+                    </div>
+                    {shareUrl ? (
+                      <div className="space-y-2 rounded-md border border-border/70 bg-background/70 p-2">
+                        <Input value={shareUrl} readOnly className="h-9 font-mono text-xs" aria-label="Share URL" />
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button variant="outline" size="sm" onClick={() => void onCopyShareLink()}>
+                            <Copy className="h-3.5 w-3.5" />
+                            {hasCopiedShareLink ? "Copied" : "Copy Link"}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(shareUrl, "_blank", "noopener,noreferrer")}
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            Open Link
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="text-xs text-muted-foreground">
                     The first run can take longer because the model download and initialization happen lazily.
                   </p>
                 )}
+                {shareNotice ? <p className="text-xs text-emerald-700">{shareNotice}</p> : null}
+                {shareError ? <p className="text-xs text-rose-700">{shareError}</p> : null}
               </div>
             </CardContent>
           </Card>

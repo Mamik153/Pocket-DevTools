@@ -7,16 +7,26 @@ from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
 
-from .models import CreateShortLinkRequest, CreateTtsJobRequest, ShortLinkResponse, TtsJobResponse
+from .event_metrics_service import EventMetricsService
+from .models import (
+    CreateShortLinkRequest,
+    CreateTtsJobRequest,
+    EventMetricResponse,
+    ShortLinkResponse,
+    TrackEventRequest,
+    TtsJobResponse,
+)
 from .tts_service import TtsService
 from .url_shortener_service import UrlShortenerService
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 AUDIO_DIR = BASE_DIR / "generated_audio"
 SHORT_LINKS_FILE = BASE_DIR / "data" / "short_links.json"
+EVENT_METRICS_FILE = BASE_DIR / "data" / "event_metrics.json"
 
 tts_service = TtsService(output_dir=AUDIO_DIR)
 url_shortener_service = UrlShortenerService(storage_path=SHORT_LINKS_FILE)
+event_metrics_service = EventMetricsService(storage_path=EVENT_METRICS_FILE)
 
 app = FastAPI(title="Markdown TTS API", version="0.1.0")
 app.add_middleware(
@@ -81,6 +91,14 @@ def _to_short_link_response(link, *, base_url: str) -> ShortLinkResponse:
     )
 
 
+def _to_event_metric_response(metric) -> EventMetricResponse:
+    return EventMetricResponse(
+        name=metric.name,
+        count=metric.count,
+        last_tracked_at=metric.last_tracked_at,
+    )
+
+
 @app.post("/api/short-links", response_model=ShortLinkResponse, status_code=status.HTTP_201_CREATED)
 def create_short_link(payload: CreateShortLinkRequest, request: Request) -> ShortLinkResponse:
     try:
@@ -116,6 +134,20 @@ def get_short_link(code: str, request: Request) -> ShortLinkResponse:
 @app.delete("/api/short-links", status_code=status.HTTP_204_NO_CONTENT)
 def clear_short_links() -> None:
     url_shortener_service.clear_links()
+
+
+@app.post("/api/metrics/events", response_model=EventMetricResponse, status_code=status.HTTP_201_CREATED)
+def track_event(payload: TrackEventRequest) -> EventMetricResponse:
+    metric = event_metrics_service.track(payload.name)
+    return _to_event_metric_response(metric)
+
+
+@app.get("/api/metrics/events", response_model=list[EventMetricResponse])
+def list_event_metrics(
+    name: list[str] | None = Query(default=None),
+) -> list[EventMetricResponse]:
+    metrics = event_metrics_service.list_metrics(names=name)
+    return [_to_event_metric_response(metric) for metric in metrics]
 
 
 @app.get("/s/{code}", include_in_schema=False)
