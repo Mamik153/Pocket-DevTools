@@ -19,3 +19,20 @@ class TtsJobResponse(BaseModel):
     audio_url: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class CreateShortLinkRequest(BaseModel):
+    long_url: str = Field(min_length=1, description="Destination URL for the short link.")
+    custom_code: str | None = Field(
+        default=None,
+        description="Optional custom short code. Allowed chars: letters, numbers, underscore, hyphen.",
+    )
+
+
+class ShortLinkResponse(BaseModel):
+    code: str
+    long_url: str
+    short_url: str
+    click_count: int
+    created_at: datetime
+    last_accessed_at: datetime | None = None
