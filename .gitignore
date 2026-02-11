@@ -8,6 +8,7 @@ frontend/*.tsbuildinfo
 # Backend
 backend/.venv
 backend/generated_audio/*.wav
+backend/data/short_links.json
 backend/__pycache__/
 backend/**/*.pyc
 backend/.pytest_cache
