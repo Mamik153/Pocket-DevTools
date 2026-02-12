@@ -1,6 +1,7 @@
 import { Link, Outlet } from "@tanstack/react-router";
 import { Wrench } from "lucide-react";
 import logo from "../../../assets/logo.jpeg";
+import { SeoManager } from "@/components/seo/SeoManager";
 import { tools } from "@/config/tools";
 import { cn } from "@/lib/utils";
 import { FloatingWidgets } from "@/components/widgets/FloatingWidgets";
@@ -11,6 +12,7 @@ const navLinkClass =
 export function AppLayout() {
   return (
     <div className="relative h-screen bg-background text-foreground overflow-y-auto overflow-x-hidden">
+      <SeoManager />
       <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-300/20 blur-3xl animate-drift" />
       <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-orange-300/20 blur-3xl animate-drift" />
 
@@ -74,6 +76,18 @@ export function AppLayout() {
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
+
+        <footer className="mt-6 text-center text-xs text-muted-foreground">
+          Made with care by{" "}
+          <a
+            href="https://www.slickspender.com/"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="underline-offset-2 hover:underline"
+          >
+            SlickSpender
+          </a>
+        </footer>
       </div>
 
       <FloatingWidgets />
