@@ -39,15 +39,17 @@ curl http://localhost:8000/health
 
 1. Keep pull requests focused on one change.
 2. Add or update docs when behavior changes.
-3. Include steps to test your change.
-4. Verify frontend build passes:
+3. If you add/update a frontend tool, keep `frontend/src/config/tools.ts`, `frontend/src/router.tsx`, and `README.md` in sync.
+4. If you add/update home-page resource links, update `frontend/src/config/resources.ts` and `README.md`.
+5. Include steps to test your change.
+6. Verify frontend build passes:
 
 ```bash
 cd frontend
 npm run build
 ```
 
-5. For backend changes, verify the modified endpoint(s) locally and include request/response examples when relevant.
+7. For backend changes, verify the modified endpoint(s) locally and include request/response examples when relevant.
 
 ## Commit Guidance
 
