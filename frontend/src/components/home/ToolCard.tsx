@@ -19,7 +19,7 @@ interface ToolCardProps {
 
 export function ToolCard({ tool, icon: Icon }: ToolCardProps) {
   return (
-    <Card className="flex h-full flex-col ">
+    <Card className="flex h-full flex-col">
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Icon className="h-4 w-4 text-primary" aria-hidden="true" />
