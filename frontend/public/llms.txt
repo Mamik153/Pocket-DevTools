@@ -1,0 +1,31 @@
+# Pocket DevTools
+
+> Pocket DevTools is a slick, focused set of everyday devtools.
+
+Base URL: https://pocketdevtools.app
+Sitemap: https://pocketdevtools.app/sitemap.xml
+Full index: https://pocketdevtools.app/llms-full.txt
+
+## Keywords
+devtools, pocket, slick, json, regex, base64, url shortener, jwt, uuid, password generator, prompt improver, markdown tts
+
+## Crawl Notes
+- Public pages only. No authentication required.
+- Prefer canonical URLs from `<link rel="canonical">`.
+- Primary content is rendered HTML and route-specific metadata.
+
+## Pages
+- https://pocketdevtools.app/
+- https://pocketdevtools.app/audioscribe
+- https://pocketdevtools.app/json-beautifier
+- https://pocketdevtools.app/json-to-toon
+- https://pocketdevtools.app/json-compare
+- https://pocketdevtools.app/prompt-improver
+- https://pocketdevtools.app/url-encoder-decoder
+- https://pocketdevtools.app/url-shortener
+- https://pocketdevtools.app/jwt-decode
+- https://pocketdevtools.app/uuid-generator
+- https://pocketdevtools.app/password-generator
+- https://pocketdevtools.app/base64
+- https://pocketdevtools.app/regex-tester
+- https://pocketdevtools.app/timestamp-converter

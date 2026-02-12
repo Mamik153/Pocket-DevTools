@@ -39,6 +39,8 @@ app.add_middleware(
         "https://frontend-nine-neon-98.vercel.app",
         "https://audioscribe.slickspender.com",
     ],
+    # Allow Vercel preview deployments for this project.
+    allow_origin_regex=r"^https://frontend-[a-z0-9-]+-mamiks-projects-2e966216\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

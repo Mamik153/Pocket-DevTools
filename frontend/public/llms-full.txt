@@ -1,0 +1,73 @@
+# Pocket DevTools - Full LLM Index
+
+Base URL: https://pocketdevtools.app
+
+## Homepage
+- URL: https://pocketdevtools.app/
+- Purpose: Directory for all Pocket DevTools pages.
+- Keywords: devtools, pocket devtools, slick developer tools
+
+## Audioscribe
+- URL: https://pocketdevtools.app/audioscribe
+- Purpose: Preview markdown and generate spoken audio with local TTS jobs.
+- Keywords: markdown tts, audio generation, devtools
+
+## JSON Beautifier
+- URL: https://pocketdevtools.app/json-beautifier
+- Purpose: Format, validate, and minify JSON payloads.
+- Keywords: json formatter, json validator, devtools
+
+## JSON to TOON
+- URL: https://pocketdevtools.app/json-to-toon
+- Purpose: Convert JSON objects into TOON-friendly key/value layout.
+- Keywords: json conversion, toon format, devtools
+
+## JSON Compare
+- URL: https://pocketdevtools.app/json-compare
+- Purpose: Diff two JSON blobs and inspect mismatches.
+- Keywords: json diff, compare json, devtools
+
+## Prompt Improver
+- URL: https://pocketdevtools.app/prompt-improver
+- Purpose: Rewrite rough prompts into clearer, structured instructions.
+- Keywords: prompt engineering, ai prompts, devtools
+
+## URL Encoder Decoder
+- URL: https://pocketdevtools.app/url-encoder-decoder
+- Purpose: Encode and decode URL strings.
+- Keywords: url encode, url decode, devtools
+
+## URL Shortener
+- URL: https://pocketdevtools.app/url-shortener
+- Purpose: Generate short links and track basic click metrics.
+- Keywords: url shortener, short links, devtools
+
+## JWT Decode
+- URL: https://pocketdevtools.app/jwt-decode
+- Purpose: Decode JWT headers and payload claims.
+- Keywords: jwt decoder, token inspection, devtools
+
+## UUID Generator
+- URL: https://pocketdevtools.app/uuid-generator
+- Purpose: Generate single or batch UUIDs.
+- Keywords: uuid generator, identifiers, devtools
+
+## Password Generator
+- URL: https://pocketdevtools.app/password-generator
+- Purpose: Generate strong passwords with configurable rules.
+- Keywords: password generator, security tools, devtools
+
+## Base64 Encoder Decoder
+- URL: https://pocketdevtools.app/base64
+- Purpose: Convert text to and from Base64.
+- Keywords: base64 encode, base64 decode, devtools
+
+## Regex Tester
+- URL: https://pocketdevtools.app/regex-tester
+- Purpose: Test regex patterns with flags and review matches.
+- Keywords: regex tester, regular expressions, devtools
+
+## Timestamp Converter
+- URL: https://pocketdevtools.app/timestamp-converter
+- Purpose: Convert between epoch timestamps and human dates.
+- Keywords: unix timestamp, epoch converter, devtools
