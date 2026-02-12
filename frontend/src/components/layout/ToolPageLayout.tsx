@@ -8,9 +8,13 @@ interface ToolPageLayoutProps {
   children: ReactNode;
 }
 
-export function ToolPageLayout({ title, description, children }: ToolPageLayoutProps) {
+export function ToolPageLayout({
+  title,
+  description,
+  children,
+}: ToolPageLayoutProps) {
   return (
-    <section className="space-y-5">
+    <section className="space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3">
       <div className="space-y-2">
         <Link
           to="/"
@@ -20,7 +24,9 @@ export function ToolPageLayout({ title, description, children }: ToolPageLayoutP
           Back to tools
         </Link>
         <h1 className="text-2xl font-semibold md:text-3xl">{title}</h1>
-        <p className="max-w-3xl text-sm text-muted-foreground md:text-base">{description}</p>
+        <p className="max-w-3xl text-sm text-muted-foreground md:text-base">
+          {description}
+        </p>
       </div>
       {children}
     </section>

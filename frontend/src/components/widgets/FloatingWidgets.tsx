@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRightLeft, ChevronDown, ChevronUp, Clock3, RefreshCw } from "lucide-react";
+import {
+  ArrowRightLeft,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  RefreshCw,
+} from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -105,8 +111,8 @@ export function FloatingWidgets() {
   const [isClockMinimized, setIsClockMinimized] = useState(true);
   const [selectedCurrencyCode, setSelectedCurrencyCode] =
     useState<TargetCurrencyCode>("USD");
-  const [currencyAmounts, setCurrencyAmounts] = useState<BilateralAmounts>(
-    () => createInitialBilateralAmounts(),
+  const [currencyAmounts, setCurrencyAmounts] = useState<BilateralAmounts>(() =>
+    createInitialBilateralAmounts(),
   );
 
   const fetchRates = useCallback(async (initialLoad: boolean) => {
@@ -118,9 +124,13 @@ export function FloatingWidgets() {
 
     try {
       setError(null);
-      const response = await fetch(`https://open.er-api.com/v6/latest/${BASE_CURRENCY}`);
+      const response = await fetch(
+        `https://open.er-api.com/v6/latest/${BASE_CURRENCY}`,
+      );
       if (!response.ok) {
-        throw new Error(`Exchange rate request failed with status ${response.status}`);
+        throw new Error(
+          `Exchange rate request failed with status ${response.status}`,
+        );
       }
 
       const data = (await response.json()) as ExchangeRateApiResponse;
@@ -209,10 +219,15 @@ export function FloatingWidgets() {
         if (current.lastEdited === "foreign") {
           const parsedForeignAmount = parseAmount(current.foreignAmount);
           const nextInrAmount =
-            parsedForeignAmount === null ? "" : formatAmount(parsedForeignAmount / ratePerInr, 2);
+            parsedForeignAmount === null
+              ? ""
+              : formatAmount(parsedForeignAmount / ratePerInr, 2);
 
           if (nextInrAmount !== current.inrAmount) {
-            nextAmounts[currency.code] = { ...current, inrAmount: nextInrAmount };
+            nextAmounts[currency.code] = {
+              ...current,
+              inrAmount: nextInrAmount,
+            };
             hasChange = true;
           }
           continue;
@@ -220,10 +235,15 @@ export function FloatingWidgets() {
 
         const parsedInrAmount = parseAmount(current.inrAmount);
         const nextForeignAmount =
-          parsedInrAmount === null ? "" : formatAmount(parsedInrAmount * ratePerInr, 4);
+          parsedInrAmount === null
+            ? ""
+            : formatAmount(parsedInrAmount * ratePerInr, 4);
 
         if (nextForeignAmount !== current.foreignAmount) {
-          nextAmounts[currency.code] = { ...current, foreignAmount: nextForeignAmount };
+          nextAmounts[currency.code] = {
+            ...current,
+            foreignAmount: nextForeignAmount,
+          };
           hasChange = true;
         }
       }
@@ -244,7 +264,9 @@ export function FloatingWidgets() {
         const ratePerInr = snapshot?.rates[currencyCode];
         const parsedForeignAmount = parseAmount(nextValue);
         const nextInrAmount =
-          typeof ratePerInr === "number" && ratePerInr > 0 && parsedForeignAmount !== null
+          typeof ratePerInr === "number" &&
+          ratePerInr > 0 &&
+          parsedForeignAmount !== null
             ? formatAmount(parsedForeignAmount / ratePerInr, 2)
             : parsedForeignAmount === null
               ? ""
@@ -274,7 +296,9 @@ export function FloatingWidgets() {
         const ratePerInr = snapshot?.rates[currencyCode];
         const parsedInrAmount = parseAmount(nextValue);
         const nextForeignAmount =
-          typeof ratePerInr === "number" && ratePerInr > 0 && parsedInrAmount !== null
+          typeof ratePerInr === "number" &&
+          ratePerInr > 0 &&
+          parsedInrAmount !== null
             ? formatAmount(parsedInrAmount * ratePerInr, 4)
             : parsedInrAmount === null
               ? ""
@@ -293,8 +317,9 @@ export function FloatingWidgets() {
   );
 
   const selectedCurrency =
-    TARGET_CURRENCIES.find((currency) => currency.code === selectedCurrencyCode) ??
-    TARGET_CURRENCIES[0];
+    TARGET_CURRENCIES.find(
+      (currency) => currency.code === selectedCurrencyCode,
+    ) ?? TARGET_CURRENCIES[0];
   const selectedEntry = currencyAmounts[selectedCurrency.code];
   const selectedRatePerInr = snapshot?.rates[selectedCurrency.code];
   const selectedInrEquivalent =
@@ -309,7 +334,7 @@ export function FloatingWidgets() {
   return (
     <motion.aside
       layout
-      className="pointer-events-none fixed right-4 top-4 z-30 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-end gap-3"
+      className="pointer-events-none fixed right-6 top-6 z-30 flex w-[min(22rem,calc(100vw-2rem))] flex-col items-end gap-3"
     >
       <AnimatePresence initial={false} mode="wait">
         {isCurrencyMinimized ? (
@@ -354,7 +379,9 @@ export function FloatingWidgets() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <CardTitle className="text-base">INR Conversion</CardTitle>
-                    <p className="text-xs text-muted-foreground">Live rates as INR equivalent</p>
+                    <p className="text-xs text-muted-foreground">
+                      Live rates as INR equivalent
+                    </p>
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.92 }}
@@ -380,7 +407,9 @@ export function FloatingWidgets() {
                       id="currency-select"
                       value={selectedCurrency.code}
                       onChange={(event) =>
-                        setSelectedCurrencyCode(event.target.value as TargetCurrencyCode)
+                        setSelectedCurrencyCode(
+                          event.target.value as TargetCurrencyCode,
+                        )
                       }
                       className="h-9 w-full rounded-md border border-input bg-background/70 px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
@@ -405,7 +434,10 @@ export function FloatingWidgets() {
                         inputMode="decimal"
                         value={selectedEntry.foreignAmount}
                         onChange={(event) =>
-                          handleForeignAmountChange(selectedCurrency.code, event.target.value)
+                          handleForeignAmountChange(
+                            selectedCurrency.code,
+                            event.target.value,
+                          )
                         }
                         placeholder="1"
                         className="h-9 bg-background/70 font-mono"
@@ -430,7 +462,10 @@ export function FloatingWidgets() {
                         inputMode="decimal"
                         value={selectedEntry.inrAmount}
                         onChange={(event) =>
-                          handleInrAmountChange(selectedCurrency.code, event.target.value)
+                          handleInrAmountChange(
+                            selectedCurrency.code,
+                            event.target.value,
+                          )
                         }
                         placeholder="0"
                         className="h-9 bg-background/70 font-mono"
@@ -449,7 +484,9 @@ export function FloatingWidgets() {
                 </div>
 
                 {isLoading && !snapshot ? (
-                  <p className="text-sm text-muted-foreground">Loading exchange rates...</p>
+                  <p className="text-sm text-muted-foreground">
+                    Loading exchange rates...
+                  </p>
                 ) : null}
 
                 {!isLoading && error && !snapshot ? (
@@ -457,7 +494,9 @@ export function FloatingWidgets() {
                 ) : null}
 
                 <div className="flex items-center justify-between pt-1">
-                  <p className="text-[11px] text-muted-foreground">Updated: {updatedAtLabel}</p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Updated: {updatedAtLabel}
+                  </p>
                   <motion.button
                     whileTap={{ scale: 0.95 }}
                     type="button"
@@ -465,12 +504,19 @@ export function FloatingWidgets() {
                     onClick={() => void fetchRates(false)}
                     disabled={isRefreshing}
                   >
-                    <RefreshCw className={cn("h-3 w-3", isRefreshing ? "animate-spin" : "")} />
+                    <RefreshCw
+                      className={cn(
+                        "h-3 w-3",
+                        isRefreshing ? "animate-spin" : "",
+                      )}
+                    />
                     Refresh
                   </motion.button>
                 </div>
 
-                {error && snapshot ? <p className="text-[11px] text-destructive">{error}</p> : null}
+                {error && snapshot ? (
+                  <p className="text-[11px] text-destructive">{error}</p>
+                ) : null}
               </CardContent>
             </Card>
           </motion.div>
@@ -517,7 +563,10 @@ export function FloatingWidgets() {
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <CardTitle className="text-base">World Clock</CardTitle>
-                    <Clock3 className="h-4 w-4 text-accent" aria-hidden="true" />
+                    <Clock3
+                      className="h-4 w-4 text-accent"
+                      aria-hidden="true"
+                    />
                   </div>
                   <motion.button
                     whileTap={{ scale: 0.92 }}
