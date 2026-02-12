@@ -101,8 +101,8 @@ export function FloatingWidgets() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCurrencyMinimized, setIsCurrencyMinimized] = useState(false);
-  const [isClockMinimized, setIsClockMinimized] = useState(false);
+  const [isCurrencyMinimized, setIsCurrencyMinimized] = useState(true);
+  const [isClockMinimized, setIsClockMinimized] = useState(true);
   const [selectedCurrencyCode, setSelectedCurrencyCode] =
     useState<TargetCurrencyCode>("USD");
   const [currencyAmounts, setCurrencyAmounts] = useState<BilateralAmounts>(
