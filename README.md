@@ -101,9 +101,7 @@ curl http://localhost:8000/health
 ## Frontend Tools
 
 - Audioscribe
-- JSON Beautifier
-- JSON to TOON
-- JSON Compare
+- JSON Toolkit
 - Prompt Improver
 - URL Encoder/Decoder
 - URL Shortener
@@ -116,6 +114,12 @@ curl http://localhost:8000/health
 
 Tool catalog: `frontend/src/config/tools.ts`  
 Routes: `frontend/src/router.tsx`
+
+JSON route aliases (same shared toolkit UI):
+
+- `/json-compare` (primary)
+- `/json-beautifier` (opens beautify mode)
+- `/json-to-toon` (opens TOON mode)
 
 ## Audioscribe Flow
 

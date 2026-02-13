@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
@@ -6,15 +7,22 @@ interface ToolPageLayoutProps {
   title: string;
   description: string;
   children: ReactNode;
+  className?: string;
 }
 
 export function ToolPageLayout({
   title,
   description,
   children,
+  className,
 }: ToolPageLayoutProps) {
   return (
-    <section className="space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3">
+    <section
+      className={cn(
+        "space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3",
+        className,
+      )}
+    >
       <div className="space-y-2">
         <Link
           to="/"

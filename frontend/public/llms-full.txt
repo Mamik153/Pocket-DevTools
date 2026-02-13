@@ -12,20 +12,20 @@ Base URL: https://pocketdevtools.app
 - Purpose: Preview markdown and generate spoken audio with local TTS jobs.
 - Keywords: markdown tts, audio generation, devtools
 
-## JSON Beautifier
+## JSON Toolkit
+- URL: https://pocketdevtools.app/json-compare
+- Purpose: One-shot JSON utility for compare, beautify/minify, TOON conversion, malformed-line debugging, and scaffolding.
+- Keywords: json toolkit, json compare, json beautifier, json scaffold, devtools
+
+## JSON Beautifier (Alias)
 - URL: https://pocketdevtools.app/json-beautifier
-- Purpose: Format, validate, and minify JSON payloads.
+- Purpose: Alias route that opens JSON Toolkit in beautify mode.
 - Keywords: json formatter, json validator, devtools
 
-## JSON to TOON
+## JSON to TOON (Alias)
 - URL: https://pocketdevtools.app/json-to-toon
-- Purpose: Convert JSON objects into TOON-friendly key/value layout.
+- Purpose: Alias route that opens JSON Toolkit in TOON mode.
 - Keywords: json conversion, toon format, devtools
-
-## JSON Compare
-- URL: https://pocketdevtools.app/json-compare
-- Purpose: Diff two JSON blobs and inspect mismatches.
-- Keywords: json diff, compare json, devtools
 
 ## Prompt Improver
 - URL: https://pocketdevtools.app/prompt-improver

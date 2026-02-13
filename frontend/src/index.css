@@ -30,10 +30,12 @@
   --animate-drift: drift 8s ease-in-out infinite;
 
   @keyframes drift {
+
     0%,
     100% {
       transform: translateY(0px) translateX(0px);
     }
+
     50% {
       transform: translateY(-12px) translateX(8px);
     }
@@ -94,4 +96,88 @@ body {
 .markdown-viewer table th,
 .markdown-viewer table td {
   @apply border border-border p-2;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari and Opera */
+}
+
+.json-editor-shell {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  overflow: hidden;
+  border: 1px solid hsl(var(--input));
+  border-radius: calc(var(--radius) - 0.25rem);
+  background: hsl(var(--background) / 0.6);
+}
+
+.json-editor-gutter {
+  border-right: 1px solid hsl(var(--border) / 0.7);
+  background: hsl(var(--secondary) / 0.35);
+  color: hsl(var(--muted-foreground));
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.75rem;
+  line-height: 24px;
+  text-align: right;
+  padding: 8px 8px 8px 4px;
+  user-select: none;
+  overflow: hidden;
+}
+
+.json-editor-gutter-content {
+  will-change: transform;
+}
+
+.json-editor-gutter-line {
+  height: 24px;
+}
+
+.json-editor-gutter-line-error {
+  color: rgb(185 28 28);
+  font-weight: 600;
+}
+
+.json-editor-input-wrap {
+  position: relative;
+}
+
+.json-editor-error-highlight {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 24px;
+  background: rgb(254 226 226 / 0.7);
+  border-top: 1px solid rgb(248 113 113 / 0.55);
+  border-bottom: 1px solid rgb(248 113 113 / 0.55);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.json-editor-textarea {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  border: 0;
+  background: transparent;
+  color: hsl(var(--foreground));
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  font-size: 0.875rem;
+  line-height: 24px;
+  padding: 8px 12px;
+  outline: none;
+  position: relative;
+  z-index: 2;
+}
+
+.json-editor-textarea::placeholder {
+  color: hsl(var(--muted-foreground));
 }

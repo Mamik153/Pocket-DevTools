@@ -34,6 +34,7 @@ export interface ToolDefinition {
   description: string;
   path: ToolPath;
   ctaLabel: string;
+  showOnHome?: boolean;
 }
 
 export const tools: ToolDefinition[] = [
@@ -49,19 +50,21 @@ export const tools: ToolDefinition[] = [
     name: "JSON Beautifier",
     description: "Format, validate, and minify JSON payloads in one place.",
     path: "/json-beautifier",
-    ctaLabel: "Open"
+    ctaLabel: "Open",
+    showOnHome: false
   },
   {
     id: "json-to-toon",
     name: "JSON to TOON",
     description: "Convert JSON objects into a TOON-friendly key/value layout.",
     path: "/json-to-toon",
-    ctaLabel: "Open"
+    ctaLabel: "Open",
+    showOnHome: false
   },
   {
     id: "json-compare",
-    name: "JSON Compare",
-    description: "Diff two JSON blobs and inspect mismatched fields quickly.",
+    name: "JSON Toolkit",
+    description: "Compare, beautify, scaffold, and convert JSON with malformed-line debugging.",
     path: "/json-compare",
     ctaLabel: "Open"
   },

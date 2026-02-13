@@ -17,9 +17,9 @@ devtools, pocket, slick, json, regex, base64, url shortener, jwt, uuid, password
 ## Pages
 - https://pocketdevtools.app/
 - https://pocketdevtools.app/audioscribe
+- https://pocketdevtools.app/json-compare
 - https://pocketdevtools.app/json-beautifier
 - https://pocketdevtools.app/json-to-toon
-- https://pocketdevtools.app/json-compare
 - https://pocketdevtools.app/prompt-improver
 - https://pocketdevtools.app/url-encoder-decoder
 - https://pocketdevtools.app/url-shortener
