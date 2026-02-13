@@ -8,6 +8,7 @@ interface ToolPageLayoutProps {
   description: string;
   children: ReactNode;
   className?: string;
+  shouldScroll?: boolean;
 }
 
 export function ToolPageLayout({
@@ -15,15 +16,17 @@ export function ToolPageLayout({
   description,
   children,
   className,
+  shouldScroll = false,
 }: ToolPageLayoutProps) {
   return (
     <section
       className={cn(
         "space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3",
+        shouldScroll && "overflow-y-auto h-[calc(100vh-4rem)] max-w-full",
         className,
       )}
     >
-      <div className="space-y-2">
+      <div className={cn("space-y-2", shouldScroll && "max-w-7xl mx-auto")}>
         <Link
           to="/"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

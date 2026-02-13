@@ -165,7 +165,7 @@ body {
 .json-editor-textarea {
   width: 100%;
   min-height: 120px;
-  resize: vertical;
+  /*resize: vertical;*/
   border: 0;
   background: transparent;
   color: hsl(var(--foreground));

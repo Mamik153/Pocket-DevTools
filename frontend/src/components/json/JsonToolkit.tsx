@@ -151,7 +151,8 @@ export function JsonToolkit({ initialMode = "compare" }: JsonToolkitProps) {
     <ToolPageLayout
       title="JSON Toolkit"
       description="One-shot JSON utility for compare, beautify/minify, malformed-line debugging, TOON conversion, and scaffolding."
-      className="overflow-y-auto h-[calc(100vh-4rem)] max-w-full"
+      className=""
+      shouldScroll={true}
     >
       <section className="space-y-4 pb-4 max-w-7xl mx-auto">
         <Card>

@@ -53,7 +53,7 @@ export function JsonEditorWithLineNumbers({
         )}
       </div>
 
-      <div className="json-editor-shell">
+      <div className="json-editor-shell  h-[400px] flex overflow-hidden">
         <div className="json-editor-gutter" aria-hidden="true">
           <div
             className="json-editor-gutter-content"
@@ -64,7 +64,9 @@ export function JsonEditorWithLineNumbers({
                 key={lineNumber}
                 className={cn(
                   "json-editor-gutter-line",
-                  issue?.line === lineNumber ? "json-editor-gutter-line-error" : null,
+                  issue?.line === lineNumber
+                    ? "json-editor-gutter-line-error"
+                    : null,
                 )}
               >
                 {lineNumber}
@@ -87,7 +89,7 @@ export function JsonEditorWithLineNumbers({
             onChange={(event) => onChange(event.target.value)}
             onScroll={(event) => setScrollTop(event.currentTarget.scrollTop)}
             className={cn(
-              "json-editor-textarea",
+              "json-editor-textarea flex-1 resize-none h-[400px]",
               minHeightClassName ?? "min-h-[320px]",
               readOnly ? "cursor-default" : null,
             )}
