@@ -9,7 +9,6 @@ import {
   Link2,
   Link2Off,
   ScanSearch,
-  Split,
 } from "lucide-react";
 import { ToolCard } from "@/components/home/ToolCard";
 import {
@@ -31,7 +30,7 @@ const toolIcons: Record<ToolId, LucideIcon> = {
   audioscribe: FileAudio2,
   "json-beautifier": Braces,
   "json-to-toon": Braces,
-  "json-compare": Split,
+  "json-compare": Braces,
   "prompt-improver": ScanSearch,
   "url-encoder-decoder": Link2,
   "url-shortener": Link2Off,
@@ -78,6 +77,8 @@ export function HomePage() {
           ease: smoothOut,
         },
       };
+
+  const homeTools = tools.filter((tool) => tool.showOnHome !== false);
 
   return (
     <div className="">
@@ -139,7 +140,7 @@ export function HomePage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 max-w-7xl w-full mx-auto ">
-          {tools.map((tool) => (
+          {homeTools.map((tool) => (
             <ToolCard key={tool.id} tool={tool} icon={toolIcons[tool.id]} />
           ))}
         </div>

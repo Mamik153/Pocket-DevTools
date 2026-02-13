@@ -1,3 +1,4 @@
+import { cn } from "@/lib/utils";
 import { Link } from "@tanstack/react-router";
 import { ChevronLeft } from "lucide-react";
 import type { ReactNode } from "react";
@@ -6,16 +7,26 @@ interface ToolPageLayoutProps {
   title: string;
   description: string;
   children: ReactNode;
+  className?: string;
+  shouldScroll?: boolean;
 }
 
 export function ToolPageLayout({
   title,
   description,
   children,
+  className,
+  shouldScroll = false,
 }: ToolPageLayoutProps) {
   return (
-    <section className="space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3">
-      <div className="space-y-2">
+    <section
+      className={cn(
+        "space-y-5 overflow-hidden max-w-7xl w-full mx-auto px-10 pt-8 pb-3",
+        shouldScroll && "overflow-y-auto h-[calc(100vh-4rem)] max-w-full",
+        className,
+      )}
+    >
+      <div className={cn("space-y-2", shouldScroll && "max-w-7xl mx-auto")}>
         <Link
           to="/"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"

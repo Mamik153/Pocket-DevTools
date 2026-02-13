@@ -31,7 +31,10 @@ export function ToolCard({ tool, icon: Icon }: ToolCardProps) {
       <CardFooter className="flex justify-end">
         <Link
           to={tool.path}
-          className={cn(buttonVariants({ size: "sm" }), "w-full sm:w-auto")}
+          className={cn(
+            buttonVariants({ size: "default" }),
+            "w-full sm:w-auto",
+          )}
         >
           {tool.ctaLabel}
         </Link>

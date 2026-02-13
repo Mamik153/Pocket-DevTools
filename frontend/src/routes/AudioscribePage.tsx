@@ -374,7 +374,7 @@ export function AudioscribePage() {
                 Paste markdown content and trigger TTS generation.
               </CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto pr-2">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto ">
               <Textarea
                 value={markdown}
                 onChange={(event) => {
@@ -414,7 +414,7 @@ export function AudioscribePage() {
                 </div>
               </div>
 
-              <div className="rounded-md border border-border/70 bg-secondary/25 p-3 text-sm">
+              <div className="rounded-2xl border border-border/70 bg-secondary/25 p-3 text-sm">
                 <div className="mb-2 flex items-center gap-2">
                   <span className="font-medium">Speech Status:</span>
                   {activeJob ? (
