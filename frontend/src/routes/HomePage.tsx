@@ -22,9 +22,12 @@ import { resourceSections } from "@/config/resources";
 import { tools } from "@/config/tools";
 import type { ToolId } from "@/config/tools";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import logo from "../../assets/logo.jpeg";
 import { Wrench } from "lucide-react";
+
+const SCROLL_THRESHOLD = 50;
 
 const toolIcons: Record<ToolId, LucideIcon> = {
   audioscribe: FileAudio2,
@@ -44,13 +47,32 @@ const toolIcons: Record<ToolId, LucideIcon> = {
 
 export function HomePage() {
   const prefersReducedMotion = useReducedMotion();
+  const [scrollTop, setScrollTop] = useState(0);
+  const isMinimized = !prefersReducedMotion && scrollTop > SCROLL_THRESHOLD;
+
   const smoothOut: [number, number, number, number] = [0.22, 1, 0.36, 1];
+  const scrollTween = { type: "tween" as const, duration: 0.3, ease: smoothOut };
+
   const headerInitial = prefersReducedMotion
-    ? { opacity: 0 }
-    : { opacity: 0, scaleX: 0, scaleY: 1, filter: "blur(4px)" };
+    ? { opacity: 0, padding: "12px", maxWidth: "48rem" }
+    : {
+        opacity: 0,
+        scaleX: 0,
+        scaleY: 0,
+        filter: "blur(4px)",
+        padding: "12px",
+        maxWidth: "48rem",
+      };
   const headerAnimate = prefersReducedMotion
-    ? { opacity: 1 }
-    : { opacity: 1, scaleX: 1, scaleY: 1, filter: "blur(0px)" };
+    ? { opacity: 1, padding: "12px", maxWidth: "48rem" }
+    : {
+        opacity: 1,
+        scaleX: 1,
+        scaleY: 1,
+        filter: "blur(0px)",
+        padding: isMinimized ? "6px 10px" : "12px",
+        maxWidth: isMinimized ? "32rem" : "48rem",
+      };
   const headerTransition = prefersReducedMotion
     ? {
         delay: 0.04,
@@ -76,6 +98,8 @@ export function HomePage() {
           duration: 0.4,
           ease: smoothOut,
         },
+        padding: scrollTween,
+        maxWidth: scrollTween,
       };
 
   const homeTools = tools.filter((tool) => tool.showOnHome !== false);
@@ -87,38 +111,61 @@ export function HomePage() {
         animate={headerAnimate}
         transition={headerTransition}
         style={{ transformOrigin: "50% 50%" }}
-        className="fixed left-1/2 top-3 z-30 w-full max-w-3xl -translate-x-1/2 rounded-bl-3xl rounded-br-3xl border-x border-b border-border/60 bg-card p-3 shadow-sm backdrop-blur-sm  overflow-hidden"
+        className="fixed left-1/2 top-3 z-30 w-full -translate-x-1/2 rounded-bl-3xl rounded-br-3xl border-x border-b border-border/60 bg-card shadow-sm backdrop-blur-sm overflow-hidden"
       >
         <div
           aria-hidden="true"
           className="pointer-events-none fixed inset-x-12 -top-9 h-8 rounded-full bg-white/20 blur-xl"
         />
 
-        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between">
           <Link
             to="/"
-            className="inline-flex items-center gap-3 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className={`inline-flex items-center rounded-md px-1 py-1 transition-[gap] duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isMinimized ? "gap-2" : "gap-3"}`}
           >
-            <span className="rounded-xl border border-border/70 bg-card/70 p-1.5">
-              <img
+            <motion.span
+              className="rounded-xl border border-border/70 bg-card/70"
+              animate={{ padding: isMinimized ? "4px" : "6px" }}
+              transition={scrollTween}
+            >
+              <motion.img
                 src={logo}
                 alt="DevTools Hub logo"
-                className="h-10 w-10 rounded-lg"
+                className="rounded-lg"
+                animate={{
+                  width: isMinimized ? 28 : 40,
+                  height: isMinimized ? 28 : 40,
+                }}
+                transition={scrollTween}
               />
-            </span>
+            </motion.span>
             <span>
-              <span className="block text-lg font-semibold">
+              <motion.span
+                className="block font-semibold"
+                animate={{ fontSize: isMinimized ? "0.938rem" : "1.125rem" }}
+                transition={scrollTween}
+              >
                 Slick Devtools
-              </span>
-              <span className="block text-sm text-muted-foreground">
+              </motion.span>
+              <motion.span
+                className="block text-sm text-muted-foreground overflow-hidden"
+                animate={{
+                  opacity: isMinimized ? 0 : 1,
+                  height: isMinimized ? 0 : "auto",
+                }}
+                transition={{ ...scrollTween, duration: 0.2 }}
+              >
                 Everyday utilities for developers
-              </span>
+              </motion.span>
             </span>
           </Link>
         </div>
       </motion.header>
 
-      <section className="space-y-8 h-[96dvh] overflow-y-auto md:px-10  pt-28">
+      <section
+        className="space-y-8 h-[96dvh] overflow-y-auto md:px-10 pt-28"
+        onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      >
         <div className="space-y-2 max-w-7xl w-full mx-auto ">
           <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
             DevTools Hub
