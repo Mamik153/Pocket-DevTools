@@ -99,37 +99,27 @@ export function HomePage() {
             to="/"
             className="inline-flex items-center gap-3 rounded-md px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <span className="rounded-lg border border-border/70 bg-card/70 p-1.5">
+            <span className="rounded-xl border border-border/70 bg-card/70 p-1.5">
               <img
                 src={logo}
                 alt="DevTools Hub logo"
-                className="h-5 w-5 rounded-sm"
+                className="h-10 w-10 rounded-lg"
               />
             </span>
             <span>
-              <span className="block text-sm text-muted-foreground">
-                Pocket DevTools
-              </span>
               <span className="block text-lg font-semibold">
-                Everyday Utilities for Developers
+                Slick Devtools
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Everyday utilities for developers
               </span>
             </span>
           </Link>
-
-          <nav
-            className="flex flex-1 items-center justify-end gap-1"
-            aria-label="Primary"
-          >
-            <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-border/70 px-2 py-1 text-xs text-muted-foreground">
-              <Wrench className="h-3.5 w-3.5" aria-hidden="true" />
-              Toolset
-            </span>
-          </nav>
         </div>
       </motion.header>
 
       <section className="space-y-8 h-[96dvh] overflow-y-auto md:px-10  pt-28">
-        <div className="space-y-3 max-w-7xl w-full mx-auto ">
+        <div className="space-y-2 max-w-7xl w-full mx-auto ">
           <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
             DevTools Hub
           </h1>
