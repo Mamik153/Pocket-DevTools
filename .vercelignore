@@ -1,0 +1,17 @@
+# Exclude backend service and local artifacts from frontend web deploys.
+backend/**
+
+# Exclude frontend local build/cache/deps.
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Exclude local tooling metadata.
+.git/**
+.github/**
+.agent/**
+.cursor/**
+.gemini/**
+.gsd/**
+.skills/**
+.vercel/**

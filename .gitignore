@@ -17,3 +17,4 @@ backend/.pytest_cache
 .DS_Store
 .idea
 .vscode
+.vercel
