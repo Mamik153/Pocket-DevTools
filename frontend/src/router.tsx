@@ -73,7 +73,7 @@ const TimestampConverterPage = lazy(() =>
 function RouteLoadingFallback() {
   return (
     <section className="py-8">
-      <p className="text-sm text-muted-foreground">Loading tool...</p>
+      <p className="text-base text-muted-foreground text-center">Loading tool...</p>
     </section>
   );
 }

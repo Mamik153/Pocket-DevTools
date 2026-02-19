@@ -171,7 +171,7 @@ export function HomePage() {
             DevTools Hub
           </h1>
           <p className="max-w-3xl text-base text-muted-foreground md:text-lg">
-            Pocket DevTools is a slick collection of practical devtools for
+            Slick Devtools is a slick collection of practical devtools for
             daily engineering tasks. Open any tool, solve the task, and move on.
           </p>
         </div>

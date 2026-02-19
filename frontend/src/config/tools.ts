@@ -43,7 +43,7 @@ export const tools: ToolDefinition[] = [
     name: "Audioscribe",
     description: "Preview markdown and generate spoken audio with local TTS jobs.",
     path: "/audioscribe",
-    ctaLabel: "Launch"
+    ctaLabel: "Open"
   },
   {
     id: "json-beautifier",
