@@ -1,11 +1,12 @@
 {
   "name": "markdown-tts-frontend",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "node scripts/generate-sitemap.mjs && tsc -b && vite build",
+    "generate-sitemap": "node scripts/generate-sitemap.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
