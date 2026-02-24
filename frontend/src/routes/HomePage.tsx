@@ -24,7 +24,6 @@ import type { ToolId } from "@/config/tools";
 import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import logo from "../../assets/logo.jpeg";
 import { Wrench } from "lucide-react";
 
 const SCROLL_THRESHOLD = 50;
@@ -129,8 +128,10 @@ export function HomePage() {
               transition={scrollTween}
             >
               <motion.img
-                src={logo}
-                alt="DevTools Hub logo"
+                src="/logo.jpeg"
+                alt="Pocket DevTools logo"
+                width={40}
+                height={40}
                 className="rounded-lg"
                 animate={{
                   width: isMinimized ? 28 : 40,
@@ -145,7 +146,7 @@ export function HomePage() {
                 animate={{ fontSize: isMinimized ? "0.938rem" : "1.125rem" }}
                 transition={scrollTween}
               >
-                Slick Devtools
+                Pocket DevTools
               </motion.span>
               <motion.span
                 className="block text-sm text-muted-foreground overflow-hidden"
@@ -155,7 +156,7 @@ export function HomePage() {
                 }}
                 transition={{ ...scrollTween, duration: 0.2 }}
               >
-                Everyday utilities for developers
+                Slick everyday devtools for developers
               </motion.span>
             </span>
           </Link>
@@ -168,11 +169,11 @@ export function HomePage() {
       >
         <div className="space-y-2 max-w-7xl w-full mx-auto ">
           <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
-            DevTools Hub
+            Pocket DevTools
           </h1>
           <p className="max-w-3xl text-base text-muted-foreground md:text-lg">
-            Slick Devtools is a slick collection of practical devtools for
-            daily engineering tasks. Open any tool, solve the task, and move on.
+            Pocket DevTools is a slick collection of everyday devtools for
+            formatting, debugging, and shipping faster. Open any tool, solve the task, and move on.
           </p>
         </div>
 

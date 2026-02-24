@@ -26,6 +26,10 @@ const mergeKeywords = (...groups: Array<string[] | undefined>) => {
 
 export const SITE_NAME = "Pocket DevTools";
 export const SITE_URL = normalizeSiteUrl(rawSiteUrl);
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-default.png`;
+export const OG_IMAGE_WIDTH = 1200;
+export const OG_IMAGE_HEIGHT = 630;
+export const DEFAULT_OG_IMAGE_ALT = "Pocket DevTools – Slick everyday devtools for developers.";
 export const DEFAULT_DESCRIPTION =
   "Pocket DevTools is a slick collection of everyday devtools for formatting, debugging, and shipping faster.";
 export const DEFAULT_KEYWORDS = [
@@ -70,8 +74,14 @@ const toolPages = Object.fromEntries(
     tool.path,
     {
       title: `${tool.name} | ${SITE_NAME}`,
-      description: `${tool.description} Built as a slick pocket devtools workflow for daily engineering tasks.`,
-      keywords: [...DEFAULT_KEYWORDS, tool.name, tool.id.replace(/-/g, " ")],
+      description:
+        tool.metaDescription ??
+        `${tool.description} Built as a slick pocket devtools workflow for daily engineering tasks.`,
+      keywords: mergeKeywords(
+        DEFAULT_KEYWORDS,
+        [tool.name, tool.id.replace(/-/g, " ")],
+        tool.metaKeywords,
+      ),
     },
   ]),
 ) as Record<ToolPath, PageSettings>;
@@ -124,3 +134,29 @@ export const getWebPageSchema = (meta: SeoMeta) => ({
     url: SITE_URL,
   },
 });
+
+export interface BreadcrumbItem {
+  name: string;
+  url: string;
+}
+
+export const getBreadcrumbSchema = (pathname: string, meta: SeoMeta) => {
+  const items: BreadcrumbItem[] = [
+    { name: SITE_NAME, url: SITE_URL },
+  ];
+  if (pathname !== "/") {
+    const tool = tools.find((t) => t.path === pathname);
+    const name = tool?.name ?? meta.title.replace(` | ${SITE_NAME}`, "");
+    items.push({ name, url: meta.canonicalUrl });
+  }
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: items.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.name,
+      item: item.url,
+    })),
+  };
+};

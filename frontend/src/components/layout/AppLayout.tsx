@@ -1,6 +1,5 @@
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 import { Wrench } from "lucide-react";
-import logo from "../../../assets/logo.jpeg";
 import { SeoManager } from "@/components/seo/SeoManager";
 import { tools } from "@/config/tools";
 import { cn } from "@/lib/utils";
