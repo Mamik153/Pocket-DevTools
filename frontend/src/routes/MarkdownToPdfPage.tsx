@@ -1,18 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
+  ChevronLeft,
   Copy,
   Download,
   ExternalLink,
   FileText,
   Loader2,
+  Minimize2,
+  PanelLeftOpen,
   Share2,
-  Volume2,
 } from "lucide-react";
-import { CustomAudioPlayer } from "@/components/CustomAudioPlayer";
 import { MarkdownPreview } from "@/components/MarkdownPreview";
 import { ToolPageLayout } from "@/components/layout/ToolPageLayout";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -23,32 +23,44 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useTtsJob } from "@/hooks/useTtsJob";
-import type { TtsJobStatus } from "@/types/tts";
 
-const DEFAULT_MARKDOWN = `# Markdown + TTS Playground
+const DEFAULT_MARKDOWN = `# Markdown to PDF
 
-Paste any markdown file and render it in real time.
+Write markdown on the left, watch it render on the right, then export a print-ready PDF.
 
-## Features
+## Why it works
 
-- Full-screen markdown preview
-- GPT-style writing surface
-- Async text-to-speech generation
-- Open-source model pipeline (Coqui TTS)
+- Exports with the same fonts you see on screen
+- Tables keep visible borders and repeat their header on every page
+- Long code lines wrap instead of getting clipped at the page edge
+
+## Supported blocks
+
+| Block | Renders | Exports |
+| --- | --- | --- |
+| Headings | Yes | Yes |
+| Tables | Yes | Yes |
+| Code fences | Yes | Yes |
+| Mermaid diagrams | Yes | Yes |
+
+> Blockquotes stay together across page breaks.
 
 \`\`\`ts
-const message = "You can narrate code blocks too.";
-console.log(message);
+const veryLongLine = "This line is deliberately long so you can confirm that code wraps onto the next line in the exported PDF instead of scrolling off the page.";
+console.log(veryLongLine);
 \`\`\`
 `;
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 const SHARE_MARKDOWN_PARAM = "md";
 const SHARE_SOURCE_PARAM = "via";
+/** Legacy value. Already-published share links carry it, so it must keep matching. */
 const SHARE_SOURCE_VALUE = "audioscribe-share";
 const MAX_SHARE_MARKDOWN_LENGTH = 4000;
+const FONT_STYLESHEET_HREF =
+  "https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Space+Grotesk:wght@400;500;700&display=swap";
 
+/** Legacy names, validated by a Literal in backend/app/models.py. Renaming needs a backend deploy. */
 type ShareEventName = "audioscribe_share_created" | "audioscribe_share_opened";
 
 interface ApiErrorBody {
@@ -95,22 +107,96 @@ const decodeMarkdownFromShare = (payload: string) => {
   return new TextDecoder().decode(bytes);
 };
 
-const statusLabel: Record<
-  TtsJobStatus,
-  { text: string; variant: "default" | "warning" | "success" | "destructive" }
-> = {
-  queued: { text: "Queued", variant: "default" },
-  processing: {
-    text: "Synthesizing (model warm-up can take time)",
-    variant: "warning",
-  },
-  done: { text: "Ready", variant: "success" },
-  error: { text: "Failed", variant: "destructive" },
-};
+/**
+ * Print stylesheet for the export popup. The app's screen styles are cloned in
+ * wholesale, so anything that only makes sense on screen has to be overridden
+ * here — hence the !important on prose/token-driven rules and on MermaidDiagram's
+ * inline scale transform.
+ */
+const PRINT_STYLES = `
+      @page { margin: 14mm; }
+      html, body { margin: 0; padding: 0; background: #fff; }
+      body {
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: #1c1c1c;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
 
-export function AudioscribePage() {
+      /* Labeled code boxes: the screen border token is too pale for paper.
+         break-inside lives on the wrapper so a page break can't land between
+         the language label and its code. */
+      .markdown-viewer .code-block {
+        border: 1px solid #999 !important;
+        border-radius: 6px;
+        break-inside: avoid;
+      }
+      .markdown-viewer .code-block-label {
+        border-bottom: 1px solid #999 !important;
+        background: #ebe9e4 !important;
+        color: #4a4a4a !important;
+        font-family: "JetBrains Mono", monospace;
+      }
+
+      /* Code: light background, wrap instead of clip. */
+      .markdown-viewer pre {
+        background: #f6f6f4 !important;
+        color: #1c1c1c !important;
+        padding: 0.75rem;
+        white-space: pre-wrap !important;
+        overflow-wrap: break-word;
+        word-break: break-word;
+        overflow: visible !important;
+      }
+      .markdown-viewer pre code {
+        font-family: "JetBrains Mono", monospace;
+        white-space: inherit !important;
+        color: inherit;
+      }
+      .markdown-viewer :not(pre) > code { overflow-wrap: break-word; }
+
+      /* Tables: borders that show on white, header repeated per page. */
+      .markdown-viewer table { width: 100%; border-collapse: collapse; }
+      .markdown-viewer th,
+      .markdown-viewer td {
+        border: 1px solid #999 !important;
+        padding: 0.4rem 0.5rem;
+        word-break: break-word;
+      }
+      .markdown-viewer thead { display: table-header-group; }
+      .markdown-viewer tr { break-inside: avoid; }
+
+      /* Pagination hygiene */
+      h1, h2, h3, h4 { break-after: avoid; }
+      blockquote, img, figure { break-inside: avoid; }
+      img, svg { max-width: 100%; height: auto; }
+
+      /* Mermaid: the on-screen fixed-height scroller and scale transform crop the diagram. */
+      .mermaid-diagram-container {
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+        break-inside: avoid;
+      }
+      .mermaid-diagram-container div {
+        transform: none !important;
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+      }
+      .mermaid-diagram-container button { display: none !important; }
+
+      .pdf-page { min-height: 100vh; }
+      @media print {
+        .pdf-page { min-height: auto; }
+      }
+`;
+
+export function MarkdownToPdfPage() {
   const [markdown, setMarkdown] = useState(DEFAULT_MARKDOWN);
+  const [isPreviewOnly, setIsPreviewOnly] = useState(false);
   const [isExportingPdf, setIsExportingPdf] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [shareUrl, setShareUrl] = useState("");
   const [shareError, setShareError] = useState<string | null>(null);
   const [shareNotice, setShareNotice] = useState<string | null>(null);
@@ -119,15 +205,6 @@ export function AudioscribePage() {
   const previewRef = useRef<HTMLDivElement>(null);
   const hasTrackedShareOpenRef = useRef(false);
   const copyStateTimeoutRef = useRef<number | null>(null);
-
-  const {
-    activeJob,
-    audioUrl,
-    isSubmitting,
-    requestError,
-    createJob,
-    clearJob,
-  } = useTtsJob(API_BASE_URL);
 
   const trackEvent = useCallback(async (name: ShareEventName) => {
     try {
@@ -181,11 +258,6 @@ export function AudioscribePage() {
     return clean.split(/\s+/).length;
   }, [markdown]);
 
-  const onGenerate = async () => {
-    if (!markdown.trim()) return;
-    await createJob(markdown);
-  };
-
   const onCreateShareLink = async () => {
     if (!markdown.trim()) return;
     if (markdown.length > MAX_SHARE_MARKDOWN_LENGTH) {
@@ -203,7 +275,7 @@ export function AudioscribePage() {
     setHasCopiedShareLink(false);
 
     try {
-      const destination = new URL("/audioscribe", window.location.origin);
+      const destination = new URL("/markdown-to-pdf", window.location.origin);
       destination.searchParams.set(
         SHARE_MARKDOWN_PARAM,
         encodeMarkdownForShare(markdown),
@@ -265,8 +337,15 @@ export function AudioscribePage() {
     const previewNode = previewRef.current;
     if (!previewNode || typeof window === "undefined") return;
 
+    setExportError(null);
+
     const printWindow = window.open("", "_blank", "width=1200,height=900");
-    if (!printWindow) return;
+    if (!printWindow) {
+      setExportError(
+        "Your browser blocked the print window. Allow pop-ups for this site and try again.",
+      );
+      return;
+    }
 
     setIsExportingPdf(true);
 
@@ -285,28 +364,9 @@ export function AudioscribePage() {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Markdown Preview PDF</title>
+    <link rel="stylesheet" href="${FONT_STYLESHEET_HREF}" />
     ${styles}
-    <style>
-      @page {
-        margin: 12mm;
-      }
-      html, body {
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
-      }
-      .pdf-page {
-        min-height: 100vh;
-      }
-      @media print {
-        .pdf-page {
-          min-height: auto;
-        }
-      }
-    </style>
+    <style>${PRINT_STYLES}</style>
   </head>
   <body>
     <main class="pdf-page">${previewNode.outerHTML}</main>
@@ -314,13 +374,11 @@ export function AudioscribePage() {
 </html>`);
     printWindow.document.close();
 
-    let finalized = false;
-    const finalize = () => {
-      if (finalized) return;
-      finalized = true;
-      setIsExportingPdf(false);
-      printWindow.close();
-    };
+    // Close the popup once printing finishes; the spinner is reset below either way,
+    // because afterprint does not fire reliably when the dialog is cancelled.
+    printWindow.addEventListener("afterprint", () => printWindow.close(), {
+      once: true,
+    });
 
     try {
       if (printWindow.document.readyState !== "complete") {
@@ -345,36 +403,53 @@ export function AudioscribePage() {
         }),
       );
 
-      printWindow.addEventListener("afterprint", finalize, { once: true });
       printWindow.focus();
       printWindow.print();
     } catch {
-      finalize();
+      printWindow.close();
+      setExportError("Unable to open the print view. Try again.");
+    } finally {
+      setIsExportingPdf(false);
     }
   };
 
   return (
     <ToolPageLayout
-      title="Audioscribe"
-      description="Write markdown, preview the result, and generate speech from your content using async TTS jobs."
+      title="Markdown to PDF"
+      description="Write markdown, preview it live, and export a print-ready PDF with the same fonts, visible table borders, and wrapped code."
     >
       <section className="grid min-h-0 gap-4 lg:grid-cols-12 h-[80dvh]">
         <motion.div
           initial={{ opacity: 0, x: -16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3 }}
-          className="lg:col-span-5"
+          className={isPreviewOnly ? "hidden" : "lg:col-span-5"}
         >
+          {/* h-[80dvh] is not redundant with the section: it is the definite height
+              the inner overflow-y-auto scrolls against. Drop it and the row grows
+              to fit content instead. */}
           <Card className="flex h-full flex-col overflow-hidden h-[80dvh]">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-4 w-4" /> Input
-              </CardTitle>
-              <CardDescription>
-                Paste markdown content and trigger TTS generation.
-              </CardDescription>
+            <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" /> Input
+                </CardTitle>
+                <CardDescription>
+                  Paste markdown content and preview it instantly.
+                </CardDescription>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Minimise input"
+                title="Minimise input"
+                onClick={() => setIsPreviewOnly(true)}
+                className="hidden lg:inline-flex"
+              >
+                <Minimize2 className="h-4 w-4" />
+              </Button>
             </CardHeader>
-            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto ">
+            <CardContent className="flex flex-1 flex-col gap-4 overflow-y-auto">
               <Textarea
                 value={markdown}
                 onChange={(event) => {
@@ -387,119 +462,78 @@ export function AudioscribePage() {
               />
 
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>{wordCount} words</span>
-                  {activeJob ? (
-                    <span>Job #{activeJob.id.slice(0, 8)}</span>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {wordCount} words
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
                   <Button
-                    variant="secondary"
+                    variant="ghost"
                     onClick={() => setMarkdown(DEFAULT_MARKDOWN)}
                   >
                     Reset
                   </Button>
                   <Button
-                    onClick={() => void onGenerate()}
-                    disabled={isSubmitting || !markdown.trim()}
+                    variant="secondary"
+                    onClick={() => void onCreateShareLink()}
+                    disabled={isCreatingShareLink || !markdown.trim()}
                   >
-                    {isSubmitting ? (
+                    {isCreatingShareLink ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      <Volume2 className="h-4 w-4" />
+                      <Share2 className="h-4 w-4" />
                     )}
-                    Generate TTS
+                    Share Snapshot
+                  </Button>
+                  {/* Step 1 -> step 2 on mobile/tablet. Navigates only; the actual
+                      export lives in the preview header. */}
+                  <Button
+                    className="lg:hidden"
+                    onClick={() => setIsPreviewOnly(true)}
+                    disabled={!markdown.trim()}
+                  >
+                    <FileText className="h-4 w-4" />
+                    Render PDF
                   </Button>
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-border/70 bg-secondary/25 p-3 text-sm">
-                <div className="mb-2 flex items-center gap-2">
-                  <span className="font-medium">Speech Status:</span>
-                  {activeJob ? (
-                    <Badge variant={statusLabel[activeJob.status].variant}>
-                      {statusLabel[activeJob.status].text}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline">Idle</Badge>
-                  )}
-                </div>
-                {requestError ? (
-                  <p className="text-rose-700">{requestError}</p>
-                ) : null}
-                {activeJob?.error ? (
-                  <p className="text-rose-700">{activeJob.error}</p>
-                ) : null}
-                {audioUrl ? (
-                  <div className="space-y-3">
-                    <CustomAudioPlayer src={audioUrl} />
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button variant="ghost" size="sm" onClick={clearJob}>
-                        Clear Job
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => void onCreateShareLink()}
-                        disabled={isCreatingShareLink}
-                      >
-                        {isCreatingShareLink ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Share2 className="h-4 w-4" />
-                        )}
-                        Share Snapshot
-                      </Button>
-                    </div>
-                    {shareUrl ? (
-                      <div className="space-y-2 rounded-md border border-border/70 bg-background/70 p-2">
-                        <Input
-                          value={shareUrl}
-                          readOnly
-                          className="h-9 font-mono text-xs"
-                          aria-label="Share URL"
-                        />
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => void onCopyShareLink()}
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                            {hasCopiedShareLink ? "Copied" : "Copy Link"}
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              window.open(
-                                shareUrl,
-                                "_blank",
-                                "noopener,noreferrer",
-                              )
-                            }
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            Open Link
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
+              {shareUrl ? (
+                <div className="space-y-2 rounded-md border border-border/70 bg-background/70 p-2">
+                  <Input
+                    value={shareUrl}
+                    readOnly
+                    className="h-9 font-mono text-xs"
+                    aria-label="Share URL"
+                  />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => void onCopyShareLink()}
+                    >
+                      <Copy className="h-3.5 w-3.5" />
+                      {hasCopiedShareLink ? "Copied" : "Copy Link"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        window.open(shareUrl, "_blank", "noopener,noreferrer")
+                      }
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open Link
+                    </Button>
                   </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    The first run can take longer because the model download and
-                    initialization happen lazily.
-                  </p>
-                )}
-                {shareNotice ? (
-                  <p className="text-xs text-emerald-700">{shareNotice}</p>
-                ) : null}
-                {shareError ? (
-                  <p className="text-xs text-rose-700">{shareError}</p>
-                ) : null}
-              </div>
+                </div>
+              ) : null}
+
+              {shareNotice ? (
+                <p className="text-xs text-emerald-700">{shareNotice}</p>
+              ) : null}
+              {shareError ? (
+                <p className="text-xs text-rose-700">{shareError}</p>
+              ) : null}
             </CardContent>
           </Card>
         </motion.div>
@@ -508,33 +542,62 @@ export function AudioscribePage() {
           initial={{ opacity: 0, x: 16 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3, delay: 0.03 }}
-          className="lg:col-span-7"
+          className={
+            isPreviewOnly ? "lg:col-span-12" : "hidden lg:block lg:col-span-7"
+          }
         >
           <Card className="flex h-full flex-col overflow-hidden h-[80dvh]">
             <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
-                  <Volume2 className="h-4 w-4" /> Preview
+                  <FileText className="h-4 w-4" /> Preview
                 </CardTitle>
                 <CardDescription>
                   Rendered markdown with typography and code highlighting.
                 </CardDescription>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => void onDownloadPdf()}
-                disabled={!markdown.trim() || isExportingPdf}
-              >
-                {isExportingPdf ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="h-4 w-4" />
-                )}
-                Download PDF
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Step 2 -> step 1 on mobile/tablet. */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="lg:hidden"
+                  aria-label="Back to input"
+                  onClick={() => setIsPreviewOnly(false)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Back
+                </Button>
+                {isPreviewOnly ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="hidden lg:inline-flex"
+                    onClick={() => setIsPreviewOnly(false)}
+                  >
+                    <PanelLeftOpen className="h-4 w-4" />
+                    Show input
+                  </Button>
+                ) : null}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void onDownloadPdf()}
+                  disabled={!markdown.trim() || isExportingPdf}
+                >
+                  {isExportingPdf ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="h-4 w-4" />
+                  )}
+                  Download PDF
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="min-h-0 flex-1 overflow-y-auto">
+              {exportError ? (
+                <p className="mb-3 text-xs text-rose-700">{exportError}</p>
+              ) : null}
               <div ref={previewRef} className="p-4 md:p-6">
                 <MarkdownPreview
                   markdown={markdown || "_Nothing to render yet._"}

@@ -7,7 +7,7 @@ Sitemap: https://pocketdevtools.app/sitemap.xml
 Full index: https://pocketdevtools.app/llms-full.txt
 
 ## Keywords
-devtools, pocket, slick, json, regex, base64, url shortener, jwt, uuid, password generator, prompt improver, markdown tts
+devtools, pocket, slick, json, regex, base64, url shortener, jwt, uuid, password generator, prompt improver, markdown to pdf
 
 ## Crawl Notes
 - Public pages only. No authentication required.
@@ -16,7 +16,7 @@ devtools, pocket, slick, json, regex, base64, url shortener, jwt, uuid, password
 
 ## Pages
 - https://pocketdevtools.app/
-- https://pocketdevtools.app/audioscribe
+- https://pocketdevtools.app/markdown-to-pdf
 - https://pocketdevtools.app/json-compare
 - https://pocketdevtools.app/json-beautifier
 - https://pocketdevtools.app/json-to-toon

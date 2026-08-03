@@ -12,17 +12,20 @@ That friction is what pushed this repo from a single tool into a small product: 
 
 At a high level, the project is now a full-stack dev utility hub with **13+ tools** in one UI.
 
-### 1) Audioscribe (the original core)
+### 1) Markdown to PDF (the original core)
 
-Audioscribe is still the heart of the project:
+This is where the project started — as Audioscribe, a markdown-to-speech tool. The
+speech half never earned its keep, so it was cut and the page became what people
+actually used it for:
 
 - Write/paste markdown
 - Live preview with code highlighting
-- Generate speech from markdown using an async TTS pipeline
-- Download preview as PDF
+- Export a print-ready PDF with the real fonts, wrapped code, and visible table borders
+- Collapse the input pane to give the preview the full width
 - Share markdown snapshots with short links
 
-The backend handles TTS as jobs (`queued -> processing -> done/error`), and the frontend polls for job status every 2 seconds until completion.
+The export is entirely client-side: the rendered preview is cloned into a popup with a
+dedicated print stylesheet, then handed to `window.print()`.
 
 ### 2) JSON Toolkit (multi-mode)
 
