@@ -3,7 +3,7 @@ import {
   Binary,
   Braces,
   Clock3,
-  FileAudio2,
+  FileDown,
   Fingerprint,
   KeyRound,
   Link2,
@@ -29,7 +29,7 @@ import { Wrench } from "lucide-react";
 const SCROLL_THRESHOLD = 50;
 
 const toolIcons: Record<ToolId, LucideIcon> = {
-  audioscribe: FileAudio2,
+  "markdown-to-pdf": FileDown,
   "json-beautifier": Braces,
   "json-to-toon": Braces,
   "json-compare": Braces,

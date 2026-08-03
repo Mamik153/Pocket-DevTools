@@ -1,12 +1,12 @@
-import { createRootRoute, createRoute, createRouter } from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import type { ComponentType } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { HomePage } from "@/routes/HomePage";
 
-const AudioscribePage = lazy(() =>
-  import("@/routes/AudioscribePage").then((module) => ({
-    default: module.AudioscribePage,
+const MarkdownToPdfPage = lazy(() =>
+  import("@/routes/MarkdownToPdfPage").then((module) => ({
+    default: module.MarkdownToPdfPage,
   })),
 );
 const JsonBeautifierPage = lazy(() =>
@@ -108,10 +108,24 @@ const homeRoute = createRoute({
   component: HomePage
 });
 
-const audioscribeRoute = createRoute({
+const markdownToPdfRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/markdown-to-pdf",
+  component: withLazySuspense(MarkdownToPdfPage)
+});
+
+// Audioscribe was renamed to Markdown to PDF. Published short links still point
+// at the old path, so keep redirecting them with ?md= and ?via= intact.
+const legacyAudioscribeRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/audioscribe",
-  component: withLazySuspense(AudioscribePage)
+  beforeLoad: () => {
+    throw redirect({
+      to: "/markdown-to-pdf",
+      search: (prev: Record<string, unknown>) => prev,
+      replace: true
+    });
+  }
 });
 
 const jsonBeautifierRoute = createRoute({
@@ -188,7 +202,8 @@ const timestampConverterRoute = createRoute({
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
-  audioscribeRoute,
+  markdownToPdfRoute,
+  legacyAudioscribeRoute,
   jsonBeautifierRoute,
   jsonToToonRoute,
   jsonCompareRoute,

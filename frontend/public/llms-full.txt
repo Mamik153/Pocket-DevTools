@@ -7,10 +7,10 @@ Base URL: https://pocketdevtools.app
 - Purpose: Directory for all Pocket DevTools pages.
 - Keywords: devtools, pocket devtools, slick developer tools
 
-## Audioscribe
-- URL: https://pocketdevtools.app/audioscribe
-- Purpose: Preview markdown and generate spoken audio with local TTS jobs.
-- Keywords: markdown tts, audio generation, devtools
+## Markdown to PDF
+- URL: https://pocketdevtools.app/markdown-to-pdf
+- Purpose: Write markdown, preview it live, and export a print-ready PDF.
+- Keywords: markdown to pdf, md to pdf, markdown preview, export markdown, devtools
 
 ## JSON Toolkit
 - URL: https://pocketdevtools.app/json-compare

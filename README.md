@@ -1,7 +1,7 @@
 # Pocket DevTools (Formerly Markdown TTS Studio)
 
 Pocket DevTools is now a multi-tool developer workspace.  
-This project started as a markdown-to-speech app and has shifted into a broader utility hub where Audioscribe is one tool among many.
+This project started as a markdown-to-speech app and has shifted into a broader utility hub where Markdown to PDF is one tool among many.
 
 ## Major Shift
 
@@ -11,7 +11,7 @@ This project started as a markdown-to-speech app and has shifted into a broader 
 ## What You Get
 
 - 13+ frontend tools in one interface (JSON, auth, encoding, regex, timestamps, passwords, URLs, and more).
-- Audioscribe with async text-to-speech job processing.
+- Markdown to PDF with a live preview and a print-ready export.
 - Floating top-right widgets:
   - INR conversion with live rates and bidirectional conversion.
   - Multi-timezone world clock.
@@ -100,7 +100,7 @@ curl http://localhost:8000/health
 
 ## Frontend Tools
 
-- Audioscribe
+- Markdown to PDF
 - JSON Toolkit
 - Prompt Improver
 - URL Encoder/Decoder
@@ -121,18 +121,26 @@ JSON route aliases (same shared toolkit UI):
 - `/json-beautifier` (opens beautify mode)
 - `/json-to-toon` (opens TOON mode)
 
-## Audioscribe Flow
+## Markdown to PDF Flow
 
-1. Frontend sends markdown to `POST /api/tts/jobs`.
-2. Backend queues and processes TTS.
-3. Frontend polls `GET /api/tts/jobs/{id}`.
-4. On completion, audio is loaded from `GET /api/tts/audio/{id}`.
+Everything happens client-side. `Download PDF` clones the rendered preview into a
+popup window, injects the app stylesheet plus a dedicated print stylesheet, and
+calls `window.print()` so the browser can save it as a PDF.
+
+The print stylesheet is what makes the export usable: it forces the real webfonts,
+gives code blocks a light background with wrapped lines, keeps table borders
+visible with a repeated header row, and stops rows and diagrams splitting across
+pages.
 
 Share snapshot support:
 
-- Users can create short links for Audioscribe markdown snapshots.
-- Shared links open Audioscribe with pre-filled content.
-- Events like `audioscribe_share_created` and `audioscribe_share_opened` are tracked via `/api/metrics/events`.
+- Users can create short links for markdown snapshots.
+- Shared links open `/markdown-to-pdf` with pre-filled content.
+- Events `audioscribe_share_created` and `audioscribe_share_opened` are tracked via `/api/metrics/events`. The names are legacy — `backend/app/models.py` validates them with a `Literal`, so renaming needs a backend deploy.
+
+The tool was previously called Audioscribe and had a text-to-speech mode. That mode
+is gone from the UI; `/audioscribe` now redirects to `/markdown-to-pdf`. The TTS
+endpoints below are unused and can be removed on the next backend change.
 
 ## Persistence Notes
 

@@ -1,5 +1,5 @@
 export type ToolId =
-  | "audioscribe"
+  | "markdown-to-pdf"
   | "json-beautifier"
   | "json-to-toon"
   | "json-compare"
@@ -14,7 +14,7 @@ export type ToolId =
   | "timestamp-converter";
 
 export type ToolPath =
-  | "/audioscribe"
+  | "/markdown-to-pdf"
   | "/json-beautifier"
   | "/json-to-toon"
   | "/json-compare"
@@ -43,13 +43,13 @@ export interface ToolDefinition {
 
 export const tools: ToolDefinition[] = [
   {
-    id: "audioscribe",
-    name: "Audioscribe",
-    description: "Preview markdown and generate spoken audio with local TTS jobs.",
-    path: "/audioscribe",
+    id: "markdown-to-pdf",
+    name: "Markdown to PDF",
+    description: "Write markdown, preview it live, and export a print-ready PDF.",
+    path: "/markdown-to-pdf",
     ctaLabel: "Open",
-    metaDescription: "Preview markdown and generate spoken audio with TTS in the browser. No uploads, local processing.",
-    metaKeywords: ["markdown to speech", "text to speech", "tts", "markdown preview"],
+    metaDescription: "Convert markdown to PDF in the browser. Live preview, real fonts, wrapped code, visible table borders. No uploads.",
+    metaKeywords: ["markdown to pdf", "md to pdf", "markdown preview", "markdown converter", "export markdown"],
   },
   {
     id: "json-beautifier",
