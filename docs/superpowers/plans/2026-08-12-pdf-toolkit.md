@@ -1014,14 +1014,27 @@ export function PdfDropzone({
 
 - [ ] **Step 2: Wire it into the shell temporarily to verify**
 
-In `frontend/src/components/pdf/PdfToolkit.tsx`, replace the placeholder `<CardContent>` body with a dropzone so it can be exercised. Add the import `import { PdfDropzone } from "@/components/pdf/PdfDropzone";` and change the `CardContent` block to:
+In `frontend/src/components/pdf/PdfToolkit.tsx`, replace the placeholder `<CardContent>` body with a dropzone so it can be exercised. This mount is transient scaffolding — Task 7 replaces it with `MergePanel`. Accepted files are rendered into the page rather than logged, so there is no debug output to leave behind.
+
+Add `import { useState } from "react";` (already imported), `import { PdfDropzone } from "@/components/pdf/PdfDropzone";`, and inside the component add:
 
 ```tsx
-            <CardContent className="py-6">
+  const [acceptedNames, setAcceptedNames] = useState<string[]>([]);
+```
+
+Then change the `CardContent` block to:
+
+```tsx
+            <CardContent className="space-y-3 py-6">
               <PdfDropzone
                 multiple
-                onAccept={(files) => console.log("accepted", files.map((f) => f.name))}
+                onAccept={(files) => setAcceptedNames(files.map((file) => file.name))}
               />
+              <ul className="text-sm text-muted-foreground">
+                {acceptedNames.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
             </CardContent>
 ```
 
@@ -1030,8 +1043,8 @@ In `frontend/src/components/pdf/PdfToolkit.tsx`, replace the placeholder `<CardC
 Run: `cd frontend && npm run dev`, open `/pdf-toolkit`, then check all four:
 
 - Dragging a PDF over the zone highlights it **while hovering**, before dropping.
-- Dropping a real PDF logs its name to the console.
-- Dropping a `.txt` file renamed to `.pdf` shows "… is not a PDF." and logs nothing.
+- Dropping a real PDF lists its name under the dropzone.
+- Dropping a `.txt` file renamed to `.pdf` shows "… is not a PDF." and lists nothing.
 - Clicking the zone opens the file picker, and picking the same file twice in a row fires both times.
 
 - [ ] **Step 4: Verify the build**
@@ -1283,7 +1296,7 @@ function MergeRowItem({ row, index, total, onMove, onRemove }: MergeRowItemProps
 
 - [ ] **Step 3: Mount it in the shell**
 
-In `frontend/src/components/pdf/PdfToolkit.tsx`, remove the temporary `PdfDropzone` import and usage from Task 6. Import `MergePanel`, and replace the `<Card>…</Card>` block inside the `motion.div` with:
+In `frontend/src/components/pdf/PdfToolkit.tsx`, remove the Task 6 scaffolding: the `PdfDropzone` import, the `acceptedNames` state, and the `<ul>`. Import `MergePanel`, and replace the `<Card>…</Card>` block inside the `motion.div` with:
 
 ```tsx
           {mode === "merge" && <MergePanel />}
