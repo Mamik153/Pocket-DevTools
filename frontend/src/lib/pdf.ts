@@ -45,3 +45,120 @@ export const pickSmaller = (
   candidate.length < original.length
     ? { bytes: candidate, saved: original.length - candidate.length }
     : { bytes: original, saved: 0 };
+
+export type PdfLib = typeof import("@cantoo/pdf-lib");
+
+let pdfLibPromise: Promise<PdfLib> | null = null;
+
+/** Load @cantoo/pdf-lib once, lazily. Keeps ~1MB out of the initial bundle. */
+export const loadPdfLib = (): Promise<PdfLib> => {
+  pdfLibPromise ??= import("@cantoo/pdf-lib");
+  return pdfLibPromise;
+};
+
+export interface PdfInfo {
+  pageCount: number;
+  isEncrypted: boolean;
+}
+
+/** Read page count and encryption status without needing a password. */
+export const inspectPdf = async (bytes: Uint8Array): Promise<PdfInfo> => {
+  const { PDFDocument } = await loadPdfLib();
+  const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  return { pageCount: doc.getPageCount(), isEncrypted: doc.isEncrypted };
+};
+
+/** Concatenate PDFs in the order given. Progress fires once per input file. */
+export const mergePdfs = async (
+  files: readonly Uint8Array[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Uint8Array> => {
+  const { PDFDocument } = await loadPdfLib();
+  const out = await PDFDocument.create();
+  for (let index = 0; index < files.length; index += 1) {
+    const source = await PDFDocument.load(files[index]);
+    const pages = await out.copyPages(source, source.getPageIndices());
+    pages.forEach((page) => out.addPage(page));
+    onProgress?.(index + 1, files.length);
+  }
+  // ponytail: objectsPerTick yields to the event loop, which is enough for
+  // ordinary files but still runs on the main thread. Move save() into a Web
+  // Worker if merging very large PDFs measurably janks the UI.
+  return out.save({ useObjectStreams: true, objectsPerTick: 200 });
+};
+
+/** True if the bytes still refuse a plain, optionless load. */
+const isStillEncrypted = async (bytes: Uint8Array): Promise<boolean> => {
+  const { PDFDocument } = await loadPdfLib();
+  try {
+    await PDFDocument.load(bytes);
+    return false;
+  } catch {
+    return true;
+  }
+};
+
+/**
+ * Decrypt and return an unencrypted copy.
+ *
+ * Loading with the right password and calling save() is NOT enough: the original
+ * encryption dictionary survives as an orphaned indirect object alongside a
+ * PDFInvalidObject remnant, and the output reloads as encrypted. Verified
+ * experimentally against generated fixtures.
+ *
+ * Tier 1 deletes those objects, preserving the object graph so outlines, bookmarks
+ * and form fields survive. Tier 2 rebuilds page-by-page, which always clears
+ * encryption but drops those structures — hence `rebuilt`, which the UI surfaces.
+ */
+export const decryptPdf = async (
+  bytes: Uint8Array,
+  password: string,
+): Promise<{ bytes: Uint8Array; rebuilt: boolean }> => {
+  const { PDFDocument, PDFDict, PDFInvalidObject, PDFName } = await loadPdfLib();
+
+  // Throws on a wrong password — callers surface that as an inline field error.
+  const doc = await PDFDocument.load(bytes, { password });
+
+  doc.context.trailerInfo.Encrypt = undefined;
+  for (const [ref, object] of doc.context.enumerateIndirectObjects()) {
+    const isEncryptionDict =
+      object instanceof PDFDict && object.get(PDFName.of("Filter")) === PDFName.of("Standard");
+    if (isEncryptionDict || object instanceof PDFInvalidObject) {
+      doc.context.delete(ref);
+    }
+  }
+
+  const stripped = await doc.save({ useObjectStreams: true, objectsPerTick: 200 });
+  if (!(await isStillEncrypted(stripped))) return { bytes: stripped, rebuilt: false };
+
+  const reloaded = await PDFDocument.load(bytes, { password });
+  return { bytes: await mergePdfsFromDocument(reloaded), rebuilt: true };
+};
+
+/** Page-level rebuild. Shared by the decrypt fallback. */
+const mergePdfsFromDocument = async (
+  source: Awaited<ReturnType<PdfLib["PDFDocument"]["load"]>>,
+): Promise<Uint8Array> => {
+  const { PDFDocument } = await loadPdfLib();
+  const out = await PDFDocument.create();
+  const pages = await out.copyPages(source, source.getPageIndices());
+  pages.forEach((page) => out.addPage(page));
+  return out.save({ useObjectStreams: true, objectsPerTick: 200 });
+};
+
+/**
+ * Lossless pass: drop orphaned objects and incremental-update history, then
+ * recompress. Text, links and searchability all survive. Often saves nothing.
+ */
+export const compressLossless = async (
+  bytes: Uint8Array,
+): Promise<{ bytes: Uint8Array; saved: number }> => {
+  const { PDFDocument } = await loadPdfLib();
+  const doc = await PDFDocument.load(bytes);
+  const candidate = await doc.save({
+    useObjectStreams: true,
+    rewrite: true,
+    objectsPerTick: 200,
+  });
+  return pickSmaller(bytes, candidate);
+};

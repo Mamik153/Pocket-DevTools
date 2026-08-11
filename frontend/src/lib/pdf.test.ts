@@ -113,3 +113,113 @@ describe("pickSmaller", () => {
     expect(result.saved).toBe(0);
   });
 });
+
+import { PDFDocument } from "@cantoo/pdf-lib";
+import {
+  compressLossless,
+  decryptPdf,
+  inspectPdf,
+  mergePdfs,
+} from "@/lib/pdf";
+
+/**
+ * Build a PDF in memory. Pages get distinct widths so ordering is assertable.
+ * `security` uses pdf-lib's own encrypt(), which removes the need for fixtures.
+ */
+const makePdf = async (
+  sizes: Array<[number, number]>,
+  security?: {
+    ownerPassword?: string;
+    userPassword?: string;
+    permissions?: { copying?: boolean; printing?: boolean };
+  },
+) => {
+  const doc = await PDFDocument.create();
+  sizes.forEach(([width, height]) => doc.addPage([width, height]));
+  if (security) doc.encrypt(security);
+  return doc.save();
+};
+
+const widthsOf = async (bytes: Uint8Array) => {
+  const doc = await PDFDocument.load(bytes);
+  return doc.getPages().map((page) => Math.round(page.getWidth()));
+};
+
+describe("inspectPdf", () => {
+  it("reports page count for a plain PDF", async () => {
+    const bytes = await makePdf([[100, 100], [100, 100]]);
+    expect(await inspectPdf(bytes)).toEqual({ pageCount: 2, isEncrypted: false });
+  });
+
+  it("reports a permission-restricted PDF as encrypted", async () => {
+    const bytes = await makePdf([[100, 100]], {
+      ownerPassword: "owner-secret",
+      permissions: { copying: false },
+    });
+    expect((await inspectPdf(bytes)).isEncrypted).toBe(true);
+  });
+});
+
+describe("mergePdfs", () => {
+  it("concatenates in the order given", async () => {
+    const first = await makePdf([[100, 100]]);
+    const second = await makePdf([[200, 200], [300, 300]]);
+    const merged = await mergePdfs([second, first]);
+    expect(await widthsOf(merged)).toEqual([200, 300, 100]);
+  });
+
+  it("reports progress once per input file", async () => {
+    const a = await makePdf([[100, 100]]);
+    const b = await makePdf([[200, 200]]);
+    const calls: Array<[number, number]> = [];
+    await mergePdfs([a, b], (done, total) => calls.push([done, total]));
+    expect(calls).toEqual([[1, 2], [2, 2]]);
+  });
+});
+
+describe("decryptPdf", () => {
+  it("unlocks a permission-restricted PDF with an empty password", async () => {
+    const bytes = await makePdf([[111, 222], [333, 444]], {
+      ownerPassword: "owner-secret",
+      permissions: { copying: false, printing: false },
+    });
+    const result = await decryptPdf(bytes, "");
+    // A plain load throws EncryptedPDFError if any encryption survived.
+    expect(await widthsOf(result.bytes)).toEqual([111, 333]);
+    expect(result.rebuilt).toBe(false);
+  });
+
+  it("removes a user password", async () => {
+    const bytes = await makePdf([[500, 600]], {
+      userPassword: "hunter2",
+      ownerPassword: "owner-secret",
+    });
+    const result = await decryptPdf(bytes, "hunter2");
+    expect(await widthsOf(result.bytes)).toEqual([500]);
+  });
+
+  it("rejects a wrong password", async () => {
+    const bytes = await makePdf([[100, 100]], { userPassword: "hunter2" });
+    await expect(decryptPdf(bytes, "wrong")).rejects.toThrow();
+  });
+
+  it("rejects an empty password on a user-password PDF", async () => {
+    const bytes = await makePdf([[100, 100]], { userPassword: "hunter2" });
+    await expect(decryptPdf(bytes, "")).rejects.toThrow();
+  });
+});
+
+describe("compressLossless", () => {
+  it("never returns a file larger than the input", async () => {
+    const bytes = await makePdf([[100, 100]]);
+    const result = await compressLossless(bytes);
+    expect(result.bytes.length).toBeLessThanOrEqual(bytes.length);
+    if (result.saved === 0) expect(result.bytes).toBe(bytes);
+  });
+
+  it("keeps the page content intact", async () => {
+    const bytes = await makePdf([[111, 222], [333, 444]]);
+    const result = await compressLossless(bytes);
+    expect(await widthsOf(result.bytes)).toEqual([111, 333]);
+  });
+});
