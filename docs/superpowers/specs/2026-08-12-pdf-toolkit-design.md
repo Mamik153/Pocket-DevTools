@@ -50,11 +50,18 @@ to `seo.ts` is needed.
 ### Libraries: two, both client-side
 
 **`@cantoo/pdf-lib`** (MIT, actively maintained, ~460k weekly downloads) — a
-maintained fork of the frozen `pdf-lib`. Decisive capability, verified against the
-published package: `PDFDocument.load(bytes, { password })` decrypts, including
-`password: ''` for permission-only PDFs, and `save()` writes the document back
-without an encryption dictionary. One library therefore covers Merge, Unlock, and
-the rebuild half of Compress.
+maintained fork of the frozen `pdf-lib`. Decisive capability, verified by running
+it against real generated PDFs: `PDFDocument.load(bytes, { password })` decrypts,
+including `password: ''` for permission-only PDFs. One library therefore covers
+Merge, Unlock, and the rebuild half of Compress.
+
+**Important correction, established by experiment.** Loading with the correct
+password and calling `save()` does **not** produce an unencrypted PDF. The
+decrypted document keeps the original encryption dictionary as an orphaned
+indirect object plus a `PDFInvalidObject` remnant, and the re-saved file reloads
+as encrypted — `PDFDocument.load()` on the output throws `EncryptedPDFError`. The
+naive implementation would have shipped a broken Unlock tool. See "Unlock" under
+Panel behaviour for the approach that actually works.
 
 **`pdfjs-dist`** (Apache-2.0) — page rendering for PDF to Image and for the
 aggressive Compress mode.
@@ -105,9 +112,14 @@ Aggressive is gated behind a toggle carrying that warning verbatim. It is
 implemented as PDF-to-Image piped into the Merge rebuild, so it adds little new
 code.
 
-Results always show before → after with the delta. When lossless achieves nothing,
-the panel says "already optimised, nothing to save" rather than presenting a
-fractional change as a success.
+**Never return a larger file.** Measured on a small generated PDF, lossless save
+produced 884 bytes from an 878-byte input — object streams add overhead that can
+exceed the saving. Both modes therefore compare output length against input length
+and, when the output is not smaller, discard it and report "already optimised,
+nothing to save" with no download offered. Handing back a bigger file labelled
+"compressed" is the specific failure this rule prevents.
+
+Otherwise results show before → after with the delta.
 
 ## Architecture
 
@@ -207,8 +219,28 @@ Drop one PDF. Load with `{ ignoreEncryption: true }` to read `isEncrypted`.
   permission-restricted class with no prompt. Only if that throws is a password
   field shown.
 
-On success, `save()` writes the document back with no encryption. The panel states
-its boundary in the UI as described under Decisions.
+Stripping the encryption then takes two tiers, because a plain re-save does not
+work (see Libraries):
+
+1. **Targeted strip (preferred).** Clear `context.trailerInfo.Encrypt`, then walk
+   `context.enumerateIndirectObjects()` and `context.delete(ref)` every
+   `PDFInvalidObject` and every `PDFDict` whose `Filter` is `PDFName.of('Standard')`
+   — the encryption dictionary. Save normally. This keeps the original object
+   graph, so outlines, bookmarks, form fields, and attachments survive.
+2. **Verify, then fall back.** Attempt a plain `PDFDocument.load(output)` with no
+   options. If it throws, the strip missed something; reload the source and rebuild
+   page-by-page via `copyPages` into a fresh document, which always clears
+   encryption. The rebuild is the same code path Merge uses.
+
+The fallback is a genuine downgrade — a page-level rebuild drops outlines and form
+data — so it is a fallback, not the default. When it fires, the UI says the document
+was rebuilt and that bookmarks and form fields may not have carried over. Silently
+returning a lossy file is the failure mode this tier exists to prevent.
+
+Both tiers are verified in tests. Against generated fixtures, tier 1 succeeds for
+both the permission-restricted and user-password cases.
+
+The panel states its boundary in the UI as described under Decisions.
 
 ### PDF to Image
 
@@ -263,7 +295,9 @@ than built speculatively.
 Add `vitest` as a devDependency with no configuration file; it reads the existing
 Vite config. Add a `test` script to `frontend/package.json`.
 
-One test file, `src/lib/pdf.test.ts`, covering the pure helpers only:
+One test file, `src/lib/pdf.test.ts`, in two parts.
+
+**Pure helpers:**
 
 - reorder index math (move up, move down, drag reorder, boundary cases at index 0
   and the last index)
@@ -272,9 +306,22 @@ One test file, `src/lib/pdf.test.ts`, covering the pure helpers only:
 - DPI to pdf.js viewport scale conversion (`scale = dpi / 72`, since a PDF user
   space unit is 1/72 inch)
 - byte-size formatting
+- the "never return a larger file" comparison
 
-No component tests, no mocking of pdf.js, no PDF fixtures. These four helpers pass
-typecheck while being wrong, which is exactly why they are the ones worth covering.
+**Document operations.** These need no checked-in fixtures and no mocking:
+`@cantoo/pdf-lib` can *create* the PDFs the tests need, including encrypted ones
+via `doc.encrypt({ ownerPassword, userPassword, permissions })`, and it runs in
+Node. Pages are given distinct dimensions so order is assertable.
+
+- merge preserves the requested order (assert page widths `[200, 300, 100]`)
+- decrypt a permission-restricted PDF (owner password only) using `password: ''`,
+  and assert the output loads with a plain `PDFDocument.load()`
+- decrypt a user-password PDF, and assert an empty and a wrong password both reject
+- assert an unencrypted PDF reports `isEncrypted === false`
+
+Excluded: anything requiring canvas. pdf.js rendering needs a real canvas, so
+PDF-to-Image and aggressive Compress are covered by manual verification rather than
+by adding a `canvas` native dependency to get them under test.
 
 ## Verification
 
