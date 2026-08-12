@@ -5,6 +5,7 @@ import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { MergePanel } from "@/components/pdf/MergePanel";
+import { ToImagePanel } from "@/components/pdf/ToImagePanel";
 import { UnlockPanel } from "@/components/pdf/UnlockPanel";
 
 export type PdfMode = "merge" | "unlock" | "to-image" | "compress";
@@ -81,7 +82,8 @@ export function PdfToolkit() {
         >
           {mode === "merge" && <MergePanel />}
           {mode === "unlock" && <UnlockPanel />}
-          {mode !== "merge" && mode !== "unlock" && (
+          {mode === "to-image" && <ToImagePanel />}
+          {mode === "compress" && (
             <Card>
               <CardContent className="py-10 text-center text-sm text-muted-foreground">
                 {mode} panel coming in a later task.

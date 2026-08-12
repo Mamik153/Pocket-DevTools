@@ -174,3 +174,93 @@ export const downloadBytes = (bytes: Uint8Array, filename: string): void => {
   anchor.click();
   URL.revokeObjectURL(url);
 };
+
+export interface RenderedPage {
+  pageNumber: number;
+  blob: Blob;
+  url: string;
+}
+
+export interface RenderOptions {
+  dpi: number;
+  format: "png" | "jpeg";
+  /** JPEG only, 0–1. Ignored for PNG. */
+  quality: number;
+  onProgress?: (done: number, total: number) => void;
+}
+
+/** Render every page to an image. Uses pdf.js, which does its work in a worker. */
+export const renderPdfToImages = async (
+  bytes: Uint8Array,
+  { dpi, format, quality, onProgress }: RenderOptions,
+): Promise<RenderedPage[]> => {
+  const pdfjs = await import("pdfjs-dist");
+  // Vite resolves this to a hashed worker asset at build time.
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.mjs",
+    import.meta.url,
+  ).toString();
+
+  // pdf.js takes ownership of the buffer, so hand it a copy.
+  const loadingTask = pdfjs.getDocument({ data: bytes.slice() });
+  const doc = await loadingTask.promise;
+  const scale = dpiToScale(dpi);
+  const mimeType = format === "png" ? "image/png" : "image/jpeg";
+  const pages: RenderedPage[] = [];
+
+  try {
+    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+      const page = await doc.getPage(pageNumber);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.ceil(viewport.width);
+      canvas.height = Math.ceil(viewport.height);
+
+      // pdf.js v6: `canvas` is the required parameter and `canvasContext` is the
+      // legacy one. Passing both is ambiguous — the type docs state that if the
+      // context is used, `canvas` must be null. Pass the canvas alone.
+      await page.render({ canvas, viewport }).promise;
+
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        canvas.toBlob(
+          (result) => (result ? resolve(result) : reject(new Error("Could not encode the page."))),
+          mimeType,
+          format === "jpeg" ? quality : undefined,
+        );
+      });
+
+      pages.push({ pageNumber, blob, url: URL.createObjectURL(blob) });
+      page.cleanup();
+      // Zero the canvas so a long document does not accumulate memory.
+      canvas.width = 0;
+      canvas.height = 0;
+      onProgress?.(pageNumber, doc.numPages);
+    }
+  } finally {
+    // PDFDocumentProxy has no destroy() of its own; only the loading task does.
+    await loadingTask.destroy();
+  }
+
+  return pages;
+};
+
+/** Store-only ZIP. The images are already compressed, so deflate would only cost time. */
+export const zipFiles = async (
+  entries: Array<{ name: string; blob: Blob }>,
+): Promise<Uint8Array> => {
+  const { zipSync } = await import("fflate");
+  const payload: Record<string, [Uint8Array, { level: 0 }]> = {};
+  for (const entry of entries) {
+    payload[entry.name] = [new Uint8Array(await entry.blob.arrayBuffer()), { level: 0 }];
+  }
+  return zipSync(payload);
+};
+
+export const downloadBlob = (blob: Blob, filename: string): void => {
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
