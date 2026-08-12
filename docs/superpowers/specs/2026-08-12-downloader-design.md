@@ -211,9 +211,17 @@ include `COBALT_API_URL` or `COBALT_API_KEY` in its message.
 
 Guards at the trust boundary, deliberately not minimized:
 
-- **URL scheme allowlist** — `http` and `https` only, enforced in the function via `new
-  URL()`, so the proxy cannot be used as a general-purpose relay. Server-side, not
-  client-side, because the client cannot be trusted.
+- **URL scheme allowlist, both directions** — `http` and `https` only, enforced in the
+  function via `new URL()`, so the proxy cannot be used as a general-purpose relay.
+  Server-side, not client-side, because the client cannot be trusted.
+
+  The allowlist applies to URLs coming *back* from cobalt as well, not just to inbound
+  ones. The frontend feeds a relayed `url` into `window.open()` and a `picker` item's `url`
+  into an anchor `href`, so a `javascript:` URL from a buggy or compromised instance would
+  otherwise reach a navigation. `picker` items are additionally shape-checked (`type` must
+  be `photo`/`video`/`gif`, `url` must validate); failing items are dropped, and a failing
+  `thumb` drops only that field so the download link survives. Validating inbound but not
+  outbound was caught in final review — the asymmetry was the defect.
 - **Rate limiting via Vercel WAF**, not application code. An in-process token bucket was
   considered and rejected: Functions scale horizontally and recycle, so an in-memory
   counter becomes per-instance and resets on cold start — a guard in appearance only. The
@@ -244,9 +252,14 @@ Guards at the trust boundary, deliberately not minimized:
 Set both with `vercel env add`. Neither is a `VITE_` variable, so neither reaches the
 client bundle.
 
-If `COBALT_API_URL` is unset, `/api/download` returns `503` with a clear "not configured"
-message and the UI renders a disabled state. Before the fork is deployed the route degrades
-honestly instead of failing mysteriously.
+If `COBALT_API_URL` is unset, `/api/download` returns `503` with a `proxy.not_configured`
+code, which the UI renders as "The downloader isn't configured yet." Before the fork is
+deployed the route degrades honestly instead of failing mysteriously.
+
+This check is reactive, not pre-flight: the form stays enabled and the message appears on
+submit. There is no client-side signal of whether `COBALT_API_URL` is set — surfacing one
+would mean publishing server configuration state to the browser — so a disabled-on-load
+control is not available without adding an endpoint whose only job is to report readiness.
 
 ## Local development
 
@@ -266,7 +279,6 @@ honestly instead of failing mysteriously.
 - Payload building for each download mode and quality.
 - Normalization of all four response shapes, including a multi-item `picker`.
 - Error-code mapping, including the unknown-code fallback.
-- Filename derivation.
 
 **Function** — `api/download.test.ts` (vitest via the new root config), with `fetch`
 stubbed so no test performs a live download:
@@ -279,6 +291,22 @@ stubbed so no test performs a live download:
 
 Rate limiting is not unit-tested because it is edge configuration rather than code; verify
 it with a burst of requests against a preview deployment.
+
+As built: 9 tests in the frontend lib suite, 21 in the function suite.
+
+## Known deferred
+
+Neither blocks merge; recorded so they are not rediscovered as surprises.
+
+- `frontend/src/lib/downloader.ts` carries no module or per-export doc comments, unlike the
+  neighbouring `lib/pdf.ts`. Purely stylistic.
+- No test asserts the literal contents of `DOWNLOAD_MODES` / `VIDEO_QUALITIES`. A drift
+  between them and the type unions would be caught by TypeScript, which is why this was
+  judged low value.
+- `ERROR_COPY` covers cobalt's common error codes but has not been reconciled against a
+  live instance's full code list. Unknown codes fall through to the raw code by design, so
+  a mismatch degrades to diagnosable rather than broken. Worth a pass once the fork is
+  deployed.
 
 ## Prerequisite
 
