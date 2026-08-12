@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/generate-sitemap.mjs && tsc -b && vite build",
+    "build": "node scripts/generate-sitemap.mjs && node scripts/copy-pdfjs-assets.mjs && tsc -b && vite build",
     "generate-sitemap": "node scripts/generate-sitemap.mjs",
+    "copy-pdfjs-assets": "node scripts/copy-pdfjs-assets.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "preview": "vite preview"
