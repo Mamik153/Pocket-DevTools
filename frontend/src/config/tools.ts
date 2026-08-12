@@ -11,7 +11,8 @@ export type ToolId =
   | "password-generator"
   | "base64"
   | "regex-tester"
-  | "timestamp-converter";
+  | "timestamp-converter"
+  | "pdf-toolkit";
 
 export type ToolPath =
   | "/markdown-to-pdf"
@@ -26,7 +27,8 @@ export type ToolPath =
   | "/password-generator"
   | "/base64"
   | "/regex-tester"
-  | "/timestamp-converter";
+  | "/timestamp-converter"
+  | "/pdf-toolkit";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -50,6 +52,15 @@ export const tools: ToolDefinition[] = [
     ctaLabel: "Open",
     metaDescription: "Convert markdown to PDF in the browser. Live preview, real fonts, wrapped code, visible table borders. No uploads.",
     metaKeywords: ["markdown to pdf", "md to pdf", "markdown preview", "markdown converter", "export markdown"],
+  },
+  {
+    id: "pdf-toolkit",
+    name: "PDF Toolkit",
+    description: "Merge, unlock, compress, and convert PDFs to images without uploading a file.",
+    path: "/pdf-toolkit",
+    ctaLabel: "Open",
+    metaDescription: "Merge, unlock, compress PDFs and convert them to images in your browser. Nothing is uploaded.",
+    metaKeywords: ["merge pdf", "unlock pdf", "compress pdf", "pdf to image", "pdf tools", "remove pdf password"],
   },
   {
     id: "json-beautifier",
