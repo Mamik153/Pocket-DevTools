@@ -1,7 +1,7 @@
 # Downloader — Design
 
 Date: 2026-08-12
-Status: Approved
+Status: Approved (revised — proxy moved from FastAPI to a Vercel Function)
 
 ## Purpose
 
@@ -10,8 +10,8 @@ self-hosted fork of [cobalt](https://github.com/imputnet/cobalt). The page prese
 explicitly and prominently as a fork of that project, never as original work.
 
 Unlike every other tool in this repo, this one is not client-side. It depends on a running
-cobalt API instance, reached through a thin FastAPI proxy that keeps the instance's API key
-off the client.
+cobalt API instance, reached through a thin TypeScript Vercel Function that keeps the
+instance's API key off the client.
 
 ## Scope
 
@@ -19,9 +19,9 @@ In scope:
 
 - A `/downloader` route: paste a URL, choose download mode and video quality, get a link.
 - Handling of cobalt's four response shapes: `tunnel`, `redirect`, `picker`, `error`.
-- A `POST /api/download` FastAPI proxy holding `COBALT_API_KEY` server-side.
+- A `POST /api/download` Vercel Function holding `COBALT_API_KEY` server-side.
 - Prominent, permanent fork attribution satisfying AGPL-3.0 §13.
-- Introducing `pytest` to the backend, covering the proxy's guards.
+- A Vercel WAF rate-limit rule on the endpoint.
 
 Out of scope:
 
@@ -29,15 +29,17 @@ Out of scope:
   separately. This spec treats a reachable `COBALT_API_URL` as a prerequisite.
 - **Client-side processing.** `localProcessing` stays at its default of `disabled`, so
   the client never remuxes. No ffmpeg-wasm, no LibAV bundle.
-- **Proxying media bytes.** Only JSON crosses FastAPI.
+- **Proxying media bytes.** Only JSON crosses the function.
+- **Any change to the FastAPI backend.** It is not touched by this feature.
 - The full cobalt option set — no bitrate, codec, filename style, or metadata toggles.
 - Download history, queueing, or batch URLs.
 
-## Why the API cannot live in this repo
+## Why the cobalt API cannot live in this repo
 
 Investigated and ruled out before designing. cobalt's API ships as a Docker container
 requiring ffmpeg, a persistent process, and a reverse proxy; its docs describe no
-serverless path. Three findings make a Vercel Function in this project unworkable:
+serverless path. Three findings make a Vercel Function in this project unworkable *for the
+cobalt API itself*:
 
 1. **Internal tunnels are per-process.** Public tunnel state goes through a `Store`
    abstraction that can be externalized to Redis, but `internalStreamCache` in
@@ -47,7 +49,8 @@ serverless path. Three findings make a Vercel Function in this project unworkabl
 2. **Duration.** Large remuxes exceed Vercel's 300s function ceiling.
 3. **Egress.** Media proxying is billed bandwidth.
 
-The frontend route belongs in this repo. The API must be a long-running container elsewhere.
+None of this applies to the *proxy*, which is stateless, short-lived, and JSON-only — which
+is why the proxy is a function and the API is a container.
 
 ## Decisions
 
@@ -68,19 +71,50 @@ Three constraints this satisfies:
 - **AGPL-3.0 §13.** Operating a modified cobalt reachable over a network obliges the
   operator to offer users its Corresponding Source. Linking the public fork discharges
   this. The obligation attaches to the *instance*, not to Pocket DevTools — a separate
-  program communicating over HTTP is not a derivative work, so this repo's React and
-  FastAPI code is unaffected and keeps its existing license.
+  program communicating over HTTP is not a derivative work, so this repo's code is
+  unaffected and keeps its existing license.
 - **No cobalt branding.** The name is used to attribute (nominative use); the logo and
   visual identity are not adopted.
 - **The stated requirement** that the tool read unambiguously as a fork.
+
+### The proxy is a Vercel Function, not a FastAPI route
+
+The proxy lives in this repo as `api/download.ts` and deploys with the frontend.
+
+What this buys:
+
+- `/api/download` is **same-origin**, so CORS does not apply to this route at all — no
+  allowlist entry, no preflight.
+- The FastAPI deployment is never touched. No new Python dependencies, no redeploy.
+- One language and one test runner across the whole feature.
+
+What it does **not** buy, stated plainly to avoid a false expectation: this does not
+eliminate a separate deployment. The FastAPI host remains deployed for `/api/short-links`,
+`/api/metrics/events`, and the TTS endpoints. The accepted consequence is two API origins —
+this route uses a relative path, other tools use `VITE_API_URL`.
+
+**No Express.** Vercel supplies the handler signature directly for non-Next frameworks:
+
+```ts
+export default {
+  async fetch(request: Request) { /* ... */ },
+};
+```
+
+A single endpoint needs no router, and Express would add a dependency plus an adapter
+around a few lines. With native `fetch` on Node 24, the function has **zero runtime
+dependencies**.
+
+**No `vercel.json` change.** The existing rewrite `/((?!api(?:$|/)|s(?:$|/)).*)` already
+excludes `/api/` from the SPA fallback, so `/api/download` falls through to the function.
 
 ### Architecture: proxy the JSON, not the bytes
 
 ```
 Browser  /downloader
-   │  POST {VITE_API_URL}/api/download   { url, downloadMode, videoQuality }
+   │  POST /api/download   { url, downloadMode, videoQuality }     ← same origin
    ▼
-FastAPI  download_service.py
+Vercel Function  api/download.ts        (zero runtime deps, native fetch)
    │  POST {COBALT_API_URL}/
    │  Authorization: Api-Key {COBALT_API_KEY}     ← server-side only, never bundled
    │  Accept: application/json
@@ -89,12 +123,12 @@ Cobalt fork instance  (Docker, separate host, separate repo)
    │
    └─→ { status: tunnel | redirect | picker | error, ... }
             │
-            ▼  JSON relayed back, normalized
+            ▼  JSON relayed back, sanitized
        Browser fetches the media URL DIRECTLY from the instance
 ```
 
-Media bytes never transit FastAPI, so a multi-gigabyte download costs the backend nothing
-and cannot hit a request timeout.
+Media bytes never transit the function, so a multi-gigabyte download costs nothing in
+compute or egress and cannot hit the function timeout.
 
 Accepted trade-off: the instance hostname is visible in download URLs. The API key — the
 part that actually gates access — stays server-side, and a hostname alone is useless
@@ -131,15 +165,15 @@ Everything else uses cobalt's defaults.
 
 ## Files
 
-Twelve files. Registration follows the same path every existing tool uses.
+Eleven files. No Python is touched.
 
 **Frontend**
 
 | File | Change |
 | --- | --- |
-| `frontend/src/lib/downloader.ts` | **New.** Pure logic: payload building, response normalization, error-code mapping, filename derivation. No React, no `fetch`. Mirrors `lib/pdf.ts`. |
+| `frontend/src/lib/downloader.ts` | **New.** Pure logic: payload building, response normalization, error-code → copy mapping, filename derivation. No React, no `fetch`. Mirrors `lib/pdf.ts`. |
 | `frontend/src/lib/downloader.test.ts` | **New.** Vitest, mirroring `pdf.test.ts`. |
-| `frontend/src/routes/DownloaderPage.tsx` | **New.** UI only — form state, calls the lib, renders results and attribution. |
+| `frontend/src/routes/DownloaderPage.tsx` | **New.** UI only — form state, calls the lib, renders results and attribution. Posts to the relative `/api/download`. |
 | `frontend/src/config/tools.ts` | Add `"downloader"` to `ToolId` and `ToolPath`; one `ToolDefinition` with `metaDescription` and `metaKeywords`. |
 | `frontend/src/router.tsx` | One `lazy()` import, one `createRoute`, one entry in `addChildren`. |
 | `frontend/src/routes/HomePage.tsx` | One entry in `toolIcons` (`Download` from lucide). Required — the map is `Record<ToolId, LucideIcon>`, so omitting it is a compile error. |
@@ -147,74 +181,100 @@ Twelve files. Registration follows the same path every existing tool uses.
 
 SEO metadata derives automatically from `tools.ts` via `config/seo.ts`. No `seo.ts` change.
 
-**Backend**
+**Function**
 
 | File | Change |
 | --- | --- |
-| `backend/app/download_service.py` | **New.** httpx call to cobalt, URL validation, error mapping, rate limiting. Matches the shape of `url_shortener_service.py`. |
-| `backend/app/models.py` | Add `DownloadRequest` and `DownloadResponse`. |
-| `backend/app/main.py` | Add `POST /api/download`. |
-| `backend/tests/test_download_service.py` | **New.** First test file in the backend; see Testing. |
-| `backend/requirements.txt` | Add `httpx` (absent today) and `pytest`. |
+| `api/download.ts` | **New.** The proxy. Validates the URL, forwards to cobalt with the key, sanitizes and relays the response. Zero runtime dependencies. |
+| `api/download.test.ts` | **New.** Vitest coverage of the guards; see Testing. |
+| `package.json` | **New**, repo root. `vitest` as the only devDependency, plus a `test` script. No runtime dependencies. |
+| `vitest.config.ts` | **New**, repo root. Limits `include` to `api/**/*.test.ts` so it does not collide with the frontend suite. |
 
-Keeping pure logic in `downloader.ts` is what stops `DownloaderPage.tsx` from growing into
-another long route file, and it is the part worth testing directly.
+### Where error copy lives
+
+The function relays cobalt's `status` and error `code` verbatim after sanitizing; the
+frontend's `downloader.ts` maps codes to human copy. This keeps display concerns in the
+frontend and avoids duplicating a message map across two build contexts, so no code is
+shared between `api/` and `frontend/`.
 
 ## Error handling
 
 cobalt returns namespaced codes (`error.api.link.invalid`, `error.api.service.unsupported`,
-`error.api.content.too_long`, `error.api.fetch.fail`, and others). A small map converts the
-common ones to plain copy; unknown codes fall back to displaying the raw code so failures
-stay diagnosable rather than collapsing into "something went wrong".
+`error.api.content.too_long`, `error.api.fetch.fail`, and others). The frontend map converts
+the common ones to plain copy; unknown codes fall back to displaying the raw code so
+failures stay diagnosable rather than collapsing into "something went wrong".
 
-httpx transport failures become a generic `502`. No error path may include
-`COBALT_API_URL` or `COBALT_API_KEY` in its message.
+Transport failures from the function's `fetch` become a generic `502`. No error path may
+include `COBALT_API_URL` or `COBALT_API_KEY` in its message.
 
 ## Security
 
 Guards at the trust boundary, deliberately not minimized:
 
-- **URL scheme allowlist** — `http` and `https` only, so the proxy cannot be used as a
-  general-purpose relay.
-- **Per-IP rate limit** on `/api/download` — 10 requests per minute, returning `429` when
-  exceeded. The endpoint fronts an expensive resource and cobalt's own docs advise
-  protecting instances from abuse. Implemented as an in-process token bucket, carrying a
-  `ponytail:` comment naming the single-worker ceiling and Redis as the upgrade path.
-- **30s timeout** on the httpx call so a hung instance cannot pile up connections.
+- **URL scheme allowlist** — `http` and `https` only, enforced in the function via `new
+  URL()`, so the proxy cannot be used as a general-purpose relay. Server-side, not
+  client-side, because the client cannot be trusted.
+- **Rate limiting via Vercel WAF**, not application code. An in-process token bucket was
+  considered and rejected: Functions scale horizontally and recycle, so an in-memory
+  counter becomes per-instance and resets on cold start — a guard in appearance only. The
+  WAF rule is enforced at the edge before the function runs:
+
+  ```bash
+  vercel firewall rules add "Rate limit downloader" \
+    --condition '{"type":"path","op":"eq","value":"/api/download"}' \
+    --action rate_limit --rate-limit-window 60 \
+    --rate-limit-requests 10 --rate-limit-keys ip --yes
+  ```
+
+  Confirm WAF custom rules are available on the current plan before relying on this.
+- **30s timeout** on the outbound call via `AbortSignal.timeout(30_000)`.
 - **`COBALT_API_KEY` read from env only**, never returned in any response.
+- **Method check** — the handler accepts `POST` only.
 
 ## Configuration
 
 | Variable | Where | Required | Notes |
 | --- | --- | --- | --- |
-| `COBALT_API_URL` | Backend | Yes | Base URL of the deployed fork. |
-| `COBALT_API_KEY` | Backend | No | Omitted if the instance is unprotected. |
-| `VITE_API_URL` | Frontend | Existing | Already used by other routes. |
+| `COBALT_API_URL` | Vercel env | Yes | Base URL of the deployed fork. |
+| `COBALT_API_KEY` | Vercel env | No | Omitted if the instance is unprotected. |
+
+Set both with `vercel env add`. Neither is a `VITE_` variable, so neither reaches the
+client bundle.
 
 If `COBALT_API_URL` is unset, `/api/download` returns `503` with a clear "not configured"
-message and the UI renders a disabled state. Before the fork is deployed the route
-degrades honestly instead of failing mysteriously.
+message and the UI renders a disabled state. Before the fork is deployed the route degrades
+honestly instead of failing mysteriously.
 
-The backend's `CORSMiddleware` allowlist in `app/main.py` already covers the frontend
-origins; no change needed.
+## Local development
+
+`vite` on port 5173 does not serve functions, so `/api/download` 404s under plain
+`npm run dev`. Two options:
+
+- **`vercel dev`** from the repo root — serves the SPA and the function together, matching
+  production. Requires the Vercel CLI (`npm i -g vercel`), which is not currently installed.
+- **A Vite proxy** in `frontend/vite.config.ts` pointing `/api/download` at a locally run
+  function. Only needed if plain `vite` is preferred; adds a config change not counted above.
 
 ## Testing
 
-**Frontend** — `downloader.test.ts` (vitest, already configured):
+**Frontend** — `frontend/src/lib/downloader.test.ts` (vitest, already configured):
 
 - Payload building for each download mode and quality.
 - Normalization of all four response shapes, including a multi-item `picker`.
 - Error-code mapping, including the unknown-code fallback.
 - Filename derivation.
 
-**Backend** — introduce `pytest` with `backend/tests/test_download_service.py`:
+**Function** — `api/download.test.ts` (vitest via the new root config), with `fetch`
+stubbed so no test performs a live download:
 
 - URL validation accepts `http`/`https` and rejects other schemes.
-- Error mapping produces no leak of `COBALT_API_URL` or `COBALT_API_KEY`.
-- Rate limiter permits traffic under the limit and rejects over it.
+- Non-`POST` methods are refused.
+- No response body or error message contains `COBALT_API_URL` or `COBALT_API_KEY`.
 - Missing `COBALT_API_URL` yields `503`, not a crash.
+- A cobalt `error` response is relayed with its code intact.
 
-The cobalt instance is stubbed; no test performs a live download.
+Rate limiting is not unit-tested because it is edge configuration rather than code; verify
+it with a burst of requests against a preview deployment.
 
 ## Prerequisite
 
