@@ -1,8 +1,6 @@
-import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { FileStack, Image as ImageIcon, Shrink, Unlock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CompressPanel } from "@/components/pdf/CompressPanel";
 import { MergePanel } from "@/components/pdf/MergePanel";
 import { ToImagePanel } from "@/components/pdf/ToImagePanel";
@@ -14,78 +12,35 @@ interface ModeConfig {
   id: PdfMode;
   label: string;
   icon: LucideIcon;
+  Panel: () => React.JSX.Element;
 }
 
 const MODES: ModeConfig[] = [
-  { id: "merge", label: "Merge", icon: FileStack },
-  { id: "unlock", label: "Unlock", icon: Unlock },
-  { id: "to-image", label: "To Image", icon: ImageIcon },
-  { id: "compress", label: "Compress", icon: Shrink },
+  { id: "merge", label: "Merge", icon: FileStack, Panel: MergePanel },
+  { id: "unlock", label: "Unlock", icon: Unlock, Panel: UnlockPanel },
+  { id: "to-image", label: "To Image", icon: ImageIcon, Panel: ToImagePanel },
+  { id: "compress", label: "Compress", icon: Shrink, Panel: CompressPanel },
 ];
 
 export function PdfToolkit() {
-  const [mode, setMode] = useState<PdfMode>("merge");
-  const prefersReducedMotion = useReducedMotion();
-
   return (
-    <div className="space-y-5">
-      <div
-        className="flex flex-wrap gap-2"
-        role="tablist"
-        aria-label="PDF tools"
-      >
-        {MODES.map(({ id, label, icon: Icon }) => {
-          const isActive = mode === id;
-          return (
-            <Button
-              key={id}
-              role="tab"
-              aria-selected={isActive}
-              aria-controls={`pdf-panel-${id}`}
-              id={`pdf-tab-${id}`}
-              variant={isActive ? "default" : "outline"}
-              onClick={() => setMode(id)}
-              className="relative"
-            >
-              {/*
-                layoutId lets the indicator physically travel between tabs rather
-                than blinking out and in — the spatial relationship stays legible.
-              */}
-              {isActive && !prefersReducedMotion && (
-                <motion.span
-                  layoutId="pdf-tab-indicator"
-                  className="absolute inset-0 -z-10 rounded-xl bg-primary"
-                  transition={{ type: "spring", bounce: 0, duration: 0.3 }}
-                />
-              )}
-              <Icon className="h-4 w-4" aria-hidden="true" />
-              {label}
-            </Button>
-          );
-        })}
-      </div>
+    // Radix Tabs supplies the roles, aria wiring and arrow-key navigation.
+    // Panels are unmounted when inactive, which each panel's cleanup relies on.
+    <Tabs defaultValue="merge" className="space-y-5">
+      <TabsList className="h-auto flex-wrap">
+        {MODES.map(({ id, label, icon: Icon }) => (
+          <TabsTrigger key={id} value={id}>
+            <Icon className="h-4 w-4" aria-hidden="true" />
+            {label}
+          </TabsTrigger>
+        ))}
+      </TabsList>
 
-      {/*
-        Cross-fade rather than slide. Merge and Unlock have no spatial
-        relationship, so a slide would imply one that does not exist.
-      */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={mode}
-          id={`pdf-panel-${mode}`}
-          role="tabpanel"
-          aria-labelledby={`pdf-tab-${mode}`}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
-        >
-          {mode === "merge" && <MergePanel />}
-          {mode === "unlock" && <UnlockPanel />}
-          {mode === "to-image" && <ToImagePanel />}
-          {mode === "compress" && <CompressPanel />}
-        </motion.div>
-      </AnimatePresence>
-    </div>
+      {MODES.map(({ id, Panel }) => (
+        <TabsContent key={id} value={id}>
+          <Panel />
+        </TabsContent>
+      ))}
+    </Tabs>
   );
 }

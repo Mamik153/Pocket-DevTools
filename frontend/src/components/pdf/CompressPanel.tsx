@@ -3,6 +3,13 @@ import { AlertTriangle, Download, Loader2 } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   compressAggressive,
@@ -112,19 +119,19 @@ export function CompressPanel() {
             </p>
             <div className="flex flex-wrap items-end gap-4">
               <div className="space-y-1">
-                <Label>Resolution</Label>
-                <div className="flex gap-2">
-                  {[100, 150, 200].map((option) => (
-                    <Button
-                      key={option}
-                      size="sm"
-                      variant={dpi === option ? "default" : "outline"}
-                      onClick={() => setDpi(option)}
-                    >
-                      {option} DPI
-                    </Button>
-                  ))}
-                </div>
+                <Label htmlFor="compress-dpi">Resolution</Label>
+                <Select value={String(dpi)} onValueChange={(v) => setDpi(Number(v))}>
+                  <SelectTrigger id="compress-dpi" className="w-36" aria-label="Resolution">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {[100, 150, 200].map((option) => (
+                      <SelectItem key={option} value={String(option)}>
+                        {option} DPI
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1">
                 <Label htmlFor="compress-quality">

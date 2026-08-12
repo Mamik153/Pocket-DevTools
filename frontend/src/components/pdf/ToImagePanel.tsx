@@ -3,6 +3,13 @@ import { Download, FileArchive, Loader2 } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { downloadBlob, inspectPdf, renderPdfToImages, zipFiles, type RenderedPage } from "@/lib/pdf";
 
 const DPI_PRESETS = [
@@ -106,35 +113,32 @@ export function ToImagePanel() {
 
       <div className="flex flex-wrap items-end gap-4">
         <div className="space-y-1">
-          <Label>Format</Label>
-          <div className="flex gap-2">
-            {(["png", "jpeg"] as const).map((option) => (
-              <Button
-                key={option}
-                size="sm"
-                variant={format === option ? "default" : "outline"}
-                onClick={() => setFormat(option)}
-              >
-                {option.toUpperCase()}
-              </Button>
-            ))}
-          </div>
+          <Label htmlFor="to-image-format">Format</Label>
+          <Select value={format} onValueChange={(v) => setFormat(v as "png" | "jpeg")}>
+            <SelectTrigger id="to-image-format" className="w-36" aria-label="Format">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="png">PNG</SelectItem>
+              <SelectItem value="jpeg">JPEG</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="space-y-1">
-          <Label>Resolution</Label>
-          <div className="flex flex-wrap gap-2">
-            {DPI_PRESETS.map((preset) => (
-              <Button
-                key={preset.dpi}
-                size="sm"
-                variant={dpi === preset.dpi ? "default" : "outline"}
-                onClick={() => setDpi(preset.dpi)}
-              >
-                {preset.label}
-              </Button>
-            ))}
-          </div>
+          <Label htmlFor="to-image-dpi">Resolution</Label>
+          <Select value={String(dpi)} onValueChange={(v) => setDpi(Number(v))}>
+            <SelectTrigger id="to-image-dpi" className="w-48" aria-label="Resolution">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {DPI_PRESETS.map((preset) => (
+                <SelectItem key={preset.dpi} value={String(preset.dpi)}>
+                  {preset.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {format === "jpeg" && (
