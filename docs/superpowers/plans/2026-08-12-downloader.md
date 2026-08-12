@@ -799,7 +799,9 @@ export function DownloaderPage() {
   const [result, setResult] = useState<DownloadResult | null>(null);
 
   const onSubmit = async () => {
-    if (!url.trim()) return;
+    // Guard here, not just on the button: onKeyDown calls this on every Enter,
+    // which bypasses the button's disabled state and fires concurrent requests.
+    if (isSubmitting || !url.trim()) return;
     setIsSubmitting(true);
     setResult(null);
     try {
