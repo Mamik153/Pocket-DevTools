@@ -31,7 +31,7 @@ export function MergePanel() {
       try {
         const info = await inspectPdf(row.bytes);
         patch = info.isEncrypted
-          ? { error: "Locked. Unlock it in the Unlock tab first." }
+          ? { error: "Locked. Unlock it in the Unlock tool first." }
           : { pageCount: info.pageCount };
       } catch {
         patch = { error: "Could not be read. It may be corrupt." };

@@ -146,7 +146,8 @@ endpoints below are unused and can be removed on the next backend change.
 ## PDF Toolkit
 
 `/pdf-toolkit` runs entirely in the browser — no PDF, and no password, is ever
-uploaded. Four tabs share one page:
+uploaded. The page opens on a card grid of the four tools; picking one replaces the
+grid with that tool, and an "All PDF tools" link goes back:
 
 - **Merge** — reorder files by dragging the grip or with the ↑/↓ buttons, add more
   without losing the list, export as one PDF.

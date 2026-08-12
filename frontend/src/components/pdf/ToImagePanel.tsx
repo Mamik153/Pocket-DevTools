@@ -33,7 +33,7 @@ export function ToImagePanel() {
   // Object URLs are not garbage collected. Revoke them when they are replaced.
   useEffect(() => () => pages.forEach((page) => URL.revokeObjectURL(page.url)), [pages]);
 
-  // PdfToolkit unmounts this panel on every tab switch, including mid-render.
+  // PdfToolkit unmounts this panel whenever you leave the tool, including mid-render.
   // That is not covered by the [pages] cleanup above: `pages` is still empty
   // when the switch happens, and the render that resolves after unmount would
   // otherwise setPages() on nothing and leak every object URL it created.
@@ -55,7 +55,7 @@ export function ToImagePanel() {
         const info = await inspectPdf(target.bytes);
         if (requestId !== requestIdRef.current) return;
         if (info.isEncrypted) {
-          setFailure("This PDF is locked. Unlock it in the Unlock tab first.");
+          setFailure("This PDF is locked. Unlock it in the Unlock tool first.");
           setProgress(null);
           return;
         }

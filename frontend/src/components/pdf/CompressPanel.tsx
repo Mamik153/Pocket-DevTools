@@ -60,7 +60,7 @@ export function CompressPanel() {
         const info = await inspectPdf(target.bytes);
         if (requestId !== requestIdRef.current) return;
         if (info.isEncrypted) {
-          setFailure("This PDF is locked. Unlock it in the Unlock tab first.");
+          setFailure("This PDF is locked. Unlock it in the Unlock tool first.");
           setProgress(null);
           return;
         }
