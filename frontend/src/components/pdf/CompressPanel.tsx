@@ -15,6 +15,10 @@ interface Result {
   bytes: Uint8Array;
   saved: number;
   originalSize: number;
+  // The mode that actually produced these bytes — not the live Switch state,
+  // which can change after the run finishes. The result block must describe
+  // the file it is offering, not whatever the toggle currently reads.
+  aggressive: boolean;
 }
 
 export function CompressPanel() {
@@ -33,11 +37,12 @@ export function CompressPanel() {
   const run = useCallback(
     async (target: AcceptedPdf) => {
       const requestId = ++requestIdRef.current;
+      const usedAggressive = aggressive;
       setFailure(null);
       setResult(null);
       setProgress({ done: 0, total: 0 });
       try {
-        const outcome = aggressive
+        const outcome = usedAggressive
           ? await compressAggressive(target.bytes, {
               dpi,
               quality,
@@ -48,7 +53,7 @@ export function CompressPanel() {
             })
           : await compressLossless(target.bytes);
         if (requestId !== requestIdRef.current) return;
-        setResult({ ...outcome, originalSize: target.bytes.length });
+        setResult({ ...outcome, originalSize: target.bytes.length, aggressive: usedAggressive });
       } catch {
         if (requestId !== requestIdRef.current) return;
         setFailure("This PDF could not be compressed. If it is locked, unlock it first.");
@@ -152,10 +157,19 @@ export function CompressPanel() {
               Already optimised — nothing to save. The original is
               {" "}
               <span className="tabular-nums">{formatBytes(result.originalSize)}</span>
-              {aggressive ? "" : ". Try aggressive mode if this is a scanned document."}
+              {result.aggressive ? "" : ". Try aggressive mode if this is a scanned document."}
             </p>
           ) : (
             <>
+              {result.aggressive && (
+                // Describes the file behind the download button below, not the
+                // live Switch — the toggle may have been flipped since this run.
+                <p className="flex items-start gap-2 text-sm text-destructive">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                  This file's pages are pictures. Text is not selectable or searchable,
+                  and links do not work.
+                </p>
+              )}
               <p className="text-sm tabular-nums">
                 {formatBytes(result.originalSize)} → {formatBytes(result.bytes.length)}
                 {" · "}
