@@ -20,18 +20,42 @@ export const isAllowedUrl = (value: string): boolean => {
   }
 };
 
+const PICKER_TYPES = new Set(["photo", "video", "gif"]);
+
+/**
+ * A picker item is only relayed if it matches the frontend's type contract
+ * and its url passes the same allowlist as inbound urls. A bad thumb drops
+ * only the thumb: it is decorative, the download link is not.
+ */
+const sanitizePickerItem = (item: unknown): Record<string, unknown> | null => {
+  if (typeof item !== "object" || item === null) return null;
+  const raw = item as Record<string, unknown>;
+  if (typeof raw.type !== "string" || !PICKER_TYPES.has(raw.type)) return null;
+  if (typeof raw.url !== "string" || !isAllowedUrl(raw.url)) return null;
+  const out: Record<string, unknown> = { type: raw.type, url: raw.url };
+  if (typeof raw.thumb === "string" && isAllowedUrl(raw.thumb)) out.thumb = raw.thumb;
+  return out;
+};
+
 /**
  * Field allowlist. Anything cobalt adds that we do not know about is dropped,
  * so a future upstream field can never relay something sensitive by accident.
+ * Urls are also re-validated on the way out: cobalt is trusted for shape, not
+ * for scheme, since its response ends up in window.open() and href/src.
  */
 const sanitize = (data: unknown): Record<string, unknown> => {
   const raw = (data ?? {}) as Record<string, unknown>;
   const out: Record<string, unknown> = {
     status: typeof raw.status === "string" ? raw.status : "error",
   };
-  if (typeof raw.url === "string") out.url = raw.url;
+  if (typeof raw.url === "string" && isAllowedUrl(raw.url)) out.url = raw.url;
   if (typeof raw.filename === "string") out.filename = raw.filename;
-  if (Array.isArray(raw.picker)) out.picker = raw.picker;
+  if (Array.isArray(raw.picker)) {
+    const picker = raw.picker
+      .map(sanitizePickerItem)
+      .filter((item): item is Record<string, unknown> => item !== null);
+    if (picker.length > 0) out.picker = picker;
+  }
   const code = (raw.error as Record<string, unknown> | undefined)?.code;
   if (typeof code === "string") out.error = { code };
   return out;
