@@ -4,6 +4,7 @@ import { FileStack, Image as ImageIcon, Shrink, Unlock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PdfDropzone } from "@/components/pdf/PdfDropzone";
 
 export type PdfMode = "merge" | "unlock" | "to-image" | "compress";
 
@@ -22,6 +23,7 @@ const MODES: ModeConfig[] = [
 
 export function PdfToolkit() {
   const [mode, setMode] = useState<PdfMode>("merge");
+  const [acceptedNames, setAcceptedNames] = useState<string[]>([]);
   const prefersReducedMotion = useReducedMotion();
 
   return (
@@ -78,8 +80,16 @@ export function PdfToolkit() {
           transition={{ duration: prefersReducedMotion ? 0 : 0.15 }}
         >
           <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              {mode} panel coming in a later task.
+            <CardContent className="space-y-3 py-6">
+              <PdfDropzone
+                multiple
+                onAccept={(files) => setAcceptedNames(files.map((file) => file.name))}
+              />
+              <ul className="text-sm text-muted-foreground">
+                {acceptedNames.map((name) => (
+                  <li key={name}>{name}</li>
+                ))}
+              </ul>
             </CardContent>
           </Card>
         </motion.div>
