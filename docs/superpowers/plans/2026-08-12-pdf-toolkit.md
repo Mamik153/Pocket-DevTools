@@ -1122,9 +1122,9 @@ export function MergePanel() {
   const [failure, setFailure] = useState<string | null>(null);
 
   const addFiles = useCallback(async (files: AcceptedPdf[]) => {
+    // PdfDropzone already assigns a collision-free id, so do not override it here.
     const pending: MergeRow[] = files.map((file) => ({
       ...file,
-      id: `${file.name}-${file.size}-${crypto.randomUUID()}`,
       pageCount: null,
       error: null,
     }));
