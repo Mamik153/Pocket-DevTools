@@ -56,9 +56,15 @@ Task 1 produces the types Task 3 consumes. Task 2 is independent of both and can
 **Interfaces:**
 - Consumes: nothing.
 - Produces, all imported by Task 3:
-  - Types: `DownloadMode`, `VideoQuality`, `DownloadRequest`, `PickerItem`, `CobaltResponse`, `DownloadResult`.
+  - Types: `DownloadMode`, `VideoQuality`, `PickerItem`, `CobaltResponse`, `DownloadResult`.
   - Constants: `DOWNLOAD_MODES: DownloadMode[]`, `VIDEO_QUALITIES: VideoQuality[]` — the page renders its `Select` options from these, so the UI can never drift from the validated set.
-  - Functions: `buildCobaltPayload(request: DownloadRequest): Record<string, string>`, `normalizeCobaltResponse(raw: CobaltResponse): DownloadResult`, `mapErrorCode(code: string): string`, `deriveFilename(url: string, provided?: string): string`.
+  - Functions: `normalizeCobaltResponse(raw: CobaltResponse): DownloadResult`, `mapErrorCode(code: string): string`.
+
+**Deliberately absent:** no client-side payload builder. Task 2's function rebuilds the
+payload from a server-side allowlist because it has to (untrusted input), so a client-side
+copy would be a second source of truth for the same rule. The page inlines its request body
+in one line. Likewise no filename helper — `window.open` ignores filenames, and cobalt's
+`filename` field covers the button label.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -66,47 +72,7 @@ Create `frontend/src/lib/downloader.test.ts`:
 
 ```ts
 import { describe, expect, it } from "vitest";
-import {
-  buildCobaltPayload,
-  deriveFilename,
-  mapErrorCode,
-  normalizeCobaltResponse,
-} from "@/lib/downloader";
-
-describe("buildCobaltPayload", () => {
-  it("trims the url and passes mode and quality through", () => {
-    expect(
-      buildCobaltPayload({
-        url: "  https://youtube.com/watch?v=abc  ",
-        downloadMode: "auto",
-        videoQuality: "720",
-      }),
-    ).toEqual({
-      url: "https://youtube.com/watch?v=abc",
-      downloadMode: "auto",
-      videoQuality: "720",
-    });
-  });
-
-  it("omits videoQuality for audio-only downloads", () => {
-    const payload = buildCobaltPayload({
-      url: "https://youtube.com/watch?v=abc",
-      downloadMode: "audio",
-      videoQuality: "1080",
-    });
-    expect(payload).not.toHaveProperty("videoQuality");
-    expect(payload.downloadMode).toBe("audio");
-  });
-
-  it("never includes localProcessing", () => {
-    const payload = buildCobaltPayload({
-      url: "https://youtube.com/watch?v=abc",
-      downloadMode: "auto",
-      videoQuality: "max",
-    });
-    expect(payload).not.toHaveProperty("localProcessing");
-  });
-});
+import { mapErrorCode, normalizeCobaltResponse } from "@/lib/downloader";
 
 describe("normalizeCobaltResponse", () => {
   it("treats tunnel as a forced download", () => {
@@ -183,28 +149,6 @@ describe("mapErrorCode", () => {
     expect(mapErrorCode("error.api.brand.new")).toBe("Download failed (error.api.brand.new).");
   });
 });
-
-describe("deriveFilename", () => {
-  it("prefers the filename cobalt supplied", () => {
-    expect(deriveFilename("https://cdn.example.com/x.mp4", "pretty name.mp4")).toBe("pretty name.mp4");
-  });
-
-  it("falls back to the last path segment", () => {
-    expect(deriveFilename("https://cdn.example.com/a/b/video.mp4")).toBe("video.mp4");
-  });
-
-  it("decodes percent-encoded segments", () => {
-    expect(deriveFilename("https://cdn.example.com/my%20clip.mp4")).toBe("my clip.mp4");
-  });
-
-  it("uses a generic name when the path has no filename", () => {
-    expect(deriveFilename("https://cdn.example.com/watch?v=abc")).toBe("download");
-  });
-
-  it("uses a generic name for an unparseable url", () => {
-    expect(deriveFilename("not a url")).toBe("download");
-  });
-});
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -226,12 +170,6 @@ export type VideoQuality = "max" | "1080" | "720" | "480" | "360";
 export const DOWNLOAD_MODES: DownloadMode[] = ["auto", "audio", "mute"];
 export const VIDEO_QUALITIES: VideoQuality[] = ["max", "1080", "720", "480", "360"];
 
-export interface DownloadRequest {
-  url: string;
-  downloadMode: DownloadMode;
-  videoQuality: VideoQuality;
-}
-
 export interface PickerItem {
   type: "photo" | "video" | "gif";
   url: string;
@@ -250,22 +188,6 @@ export type DownloadResult =
   | { kind: "single"; url: string; filename?: string; forcesDownload: boolean }
   | { kind: "picker"; items: PickerItem[] }
   | { kind: "error"; code: string; message: string };
-
-/**
- * cobalt's own field names, so this doubles as the request body for /api/download.
- * videoQuality is dropped for audio-only downloads, where it means nothing.
- * localProcessing is never sent — see the spec's scope section.
- */
-export const buildCobaltPayload = (request: DownloadRequest): Record<string, string> => {
-  const payload: Record<string, string> = {
-    url: request.url.trim(),
-    downloadMode: request.downloadMode,
-  };
-  if (request.downloadMode !== "audio") {
-    payload.videoQuality = request.videoQuality;
-  }
-  return payload;
-};
 
 const ERROR_COPY: Record<string, string> = {
   "error.api.link.invalid": "That doesn't look like a valid link.",
@@ -317,16 +239,6 @@ export const normalizeCobaltResponse = (raw: CobaltResponse): DownloadResult => 
       return errorResult("error.api.unknown");
   }
 };
-
-export const deriveFilename = (url: string, provided?: string): string => {
-  if (provided) return provided;
-  try {
-    const last = new URL(url).pathname.split("/").filter(Boolean).pop();
-    return last && last.includes(".") ? decodeURIComponent(last) : "download";
-  } catch {
-    return "download";
-  }
-};
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -335,7 +247,7 @@ export const deriveFilename = (url: string, provided?: string): string => {
 cd frontend && npm test -- downloader
 ```
 
-Expected: PASS, 18 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -777,7 +689,7 @@ Do **not** commit the root `package-lock.json` in the same commit if the repo's 
 - Create: `frontend/src/routes/DownloaderPage.tsx`
 
 **Interfaces:**
-- Consumes: from Task 1 — `buildCobaltPayload`, `normalizeCobaltResponse`, `mapErrorCode`, `deriveFilename`, `DOWNLOAD_MODES`, `VIDEO_QUALITIES`, and types `DownloadMode`, `VideoQuality`, `DownloadResult`, `CobaltResponse`. From Task 2 — `POST /api/download`.
+- Consumes: from Task 1 — `normalizeCobaltResponse`, `mapErrorCode`, `DOWNLOAD_MODES`, `VIDEO_QUALITIES`, and types `DownloadMode`, `VideoQuality`, `DownloadResult`, `CobaltResponse`, `PickerItem`. From Task 2 — `POST /api/download`.
 - Produces: named export `DownloaderPage`, which Task 4's router imports lazily.
 
 The attribution block copy is fixed by the spec. Reproduce it exactly.
@@ -800,8 +712,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  buildCobaltPayload,
-  deriveFilename,
   mapErrorCode,
   normalizeCobaltResponse,
   DOWNLOAD_MODES,
@@ -896,7 +806,7 @@ export function DownloaderPage() {
       const response = await fetch("/api/download", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(buildCobaltPayload({ url, downloadMode, videoQuality })),
+        body: JSON.stringify({ url: url.trim(), downloadMode, videoQuality }),
       });
       const data = (await response.json()) as CobaltResponse;
       setResult(normalizeCobaltResponse(data));
@@ -1000,7 +910,7 @@ export function DownloaderPage() {
             {result.kind === "single" && (
               <div className="space-y-2">
                 <Button onClick={() => window.open(result.url, "_blank", "noopener")}>
-                  Download {deriveFilename(result.url, result.filename)}
+                  {result.filename ? `Download ${result.filename}` : "Download"}
                 </Button>
                 {!result.forcesDownload && (
                   <p className="text-xs text-muted-foreground">
