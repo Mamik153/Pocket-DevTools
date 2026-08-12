@@ -670,7 +670,7 @@ export default {
 npm test
 ```
 
-Expected: PASS, 17 tests.
+Expected: PASS, 16 tests.
 
 - [ ] **Step 6: Commit**
 
