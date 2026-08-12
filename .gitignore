@@ -21,3 +21,4 @@ backend/.pytest_cache
 
 # Subagent-driven-development scratch (ledger, briefs, review packages).
 .superpowers/
+.env*

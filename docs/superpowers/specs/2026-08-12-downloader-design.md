@@ -226,7 +226,10 @@ Guards at the trust boundary, deliberately not minimized:
     --rate-limit-requests 10 --rate-limit-keys ip --yes
   ```
 
-  Confirm WAF custom rules are available on the current plan before relying on this.
+  **Verified available on the Hobby plan** — this exact rule was staged successfully
+  against project `frontend` and then discarded, so no plan upgrade is required. Apply it
+  and run `vercel firewall publish` once the route is deployed; rules stage as drafts and
+  do not affect production until published.
 - **30s timeout** on the outbound call via `AbortSignal.timeout(30_000)`.
 - **`COBALT_API_KEY` read from env only**, never returned in any response.
 - **Method check** — the handler accepts `POST` only.
@@ -251,7 +254,8 @@ honestly instead of failing mysteriously.
 `npm run dev`. Two options:
 
 - **`vercel dev`** from the repo root — serves the SPA and the function together, matching
-  production. Requires the Vercel CLI (`npm i -g vercel`), which is not currently installed.
+  production. Vercel CLI 58.9.4 is installed and the repo is linked to the `frontend`
+  project, so this works as-is. `.vercel` and `.env.local` are both gitignored.
 - **A Vite proxy** in `frontend/vite.config.ts` pointing `/api/download` at a locally run
   function. Only needed if plain `vite` is preferred; adds a config change not counted above.
 
