@@ -98,7 +98,7 @@ export function DownloaderPage() {
   const [result, setResult] = useState<DownloadResult | null>(null);
 
   const onSubmit = async () => {
-    if (!url.trim()) return;
+    if (!url.trim() || isSubmitting) return;
     setIsSubmitting(true);
     setResult(null);
     try {
