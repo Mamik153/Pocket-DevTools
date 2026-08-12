@@ -9,6 +9,7 @@ export function PdfToolkitPage() {
       // ToolPageLayout defaults to overflow-hidden; without this the page clips
       // instead of scrolling. Same opt-in JsonToolkit and PromptImprover use.
       shouldScroll
+      className="max-w-7xl mx-auto w-full"
     >
       <PdfToolkit />
     </ToolPageLayout>
