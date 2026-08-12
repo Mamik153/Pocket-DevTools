@@ -3,6 +3,7 @@ import {
   ChevronLeft,
   ChevronRight,
   FileStack,
+  FileImage,
   Image as ImageIcon,
   ShieldCheck,
   Shrink,
@@ -11,10 +12,11 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { CompressPanel } from "@/components/pdf/CompressPanel";
 import { MergePanel } from "@/components/pdf/MergePanel";
+import { ImageToPdfPanel } from "@/components/pdf/ImageToPdfPanel";
 import { ToImagePanel } from "@/components/pdf/ToImagePanel";
 import { UnlockPanel } from "@/components/pdf/UnlockPanel";
 
-export type PdfMode = "merge" | "unlock" | "to-image" | "compress";
+export type PdfMode = "merge" | "unlock" | "to-image" | "image-to-pdf" | "compress";
 
 interface ModeConfig {
   id: PdfMode;
@@ -45,6 +47,13 @@ const MODES: ModeConfig[] = [
     description: "Turn each page into a PNG or JPEG, downloaded singly or as a ZIP.",
     icon: ImageIcon,
     Panel: ToImagePanel,
+  },
+  {
+    id: "image-to-pdf",
+    label: "Image to PDF",
+    description: "Combine JPEG, PNG, GIF, BMP or WebP images into a single PDF.",
+    icon: FileImage,
+    Panel: ImageToPdfPanel,
   },
   {
     id: "compress",

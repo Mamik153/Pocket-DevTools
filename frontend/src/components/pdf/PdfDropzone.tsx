@@ -1,7 +1,7 @@
 import { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload } from "lucide-react";
-import { formatBytes, isPdfBytes } from "@/lib/pdf";
+import { formatBytes, isImageBytes, isPdfBytes } from "@/lib/pdf";
 import { cn } from "@/lib/utils";
 
 export interface AcceptedPdf {
@@ -14,17 +14,26 @@ export interface AcceptedPdf {
 /** Above this, a browser may run out of memory. We warn; we never block. */
 export const LARGE_FILE_WARNING_BYTES = 50 * 1024 * 1024;
 
+/** What this dropzone takes. Each kind supplies its own header check and copy. */
+const KINDS = {
+  pdf: { noun: "PDF", accept: "application/pdf,.pdf", sniff: isPdfBytes },
+  image: { noun: "image", accept: "image/*", sniff: isImageBytes },
+} as const;
+
 interface PdfDropzoneProps {
+  kind?: keyof typeof KINDS;
   multiple?: boolean;
   label?: string;
   onAccept: (files: AcceptedPdf[]) => void;
 }
 
 export function PdfDropzone({
+  kind = "pdf",
   multiple = false,
   label = "Drop a PDF here, or click to choose",
   onAccept,
 }: PdfDropzoneProps) {
+  const { noun, accept, sniff } = KINDS[kind];
   const [isOver, setIsOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -43,14 +52,14 @@ export function PdfDropzone({
       const rejected: string[] = [];
       const oversized: string[] =
         !multiple && allFiles.length > 1
-          ? ["Only the first file was used — this tool takes one PDF at a time."]
+          ? [`Only the first file was used — this tool takes one ${noun} at a time.`]
           : [];
 
       for (const file of files) {
         const bytes = new Uint8Array(await file.arrayBuffer());
         // Extension and MIME type are user-controlled. Only the header is evidence.
-        if (!isPdfBytes(bytes)) {
-          rejected.push(`${file.name} is not a PDF.`);
+        if (!sniff(bytes)) {
+          rejected.push(`${file.name} is not ${noun === "image" ? "an image" : "a PDF"}.`);
           continue;
         }
         if (file.size > LARGE_FILE_WARNING_BYTES) {
@@ -70,7 +79,7 @@ export function PdfDropzone({
       setWarnings(oversized);
       if (accepted.length > 0) onAccept(accepted);
     },
-    [onAccept],
+    [onAccept, multiple, noun, sniff],
   );
 
   return (
@@ -104,7 +113,7 @@ export function PdfDropzone({
         <input
           id={inputId}
           type="file"
-          accept="application/pdf,.pdf"
+          accept={accept}
           multiple={multiple}
           className="sr-only"
           onChange={(event) => {

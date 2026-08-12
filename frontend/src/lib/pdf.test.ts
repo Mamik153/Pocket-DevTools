@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   dpiToScale,
   formatBytes,
+  isImageBytes,
   isPdfBytes,
   moveItem,
   pickSmaller,
+  pxToPoints,
+  sniffImageType,
 } from "@/lib/pdf";
 
 const bytesOf = (text: string) => new TextEncoder().encode(text);
@@ -221,5 +224,67 @@ describe("compressLossless", () => {
     const bytes = await makePdf([[111, 222], [333, 444]]);
     const result = await compressLossless(bytes);
     expect(await widthsOf(result.bytes)).toEqual([111, 333]);
+  });
+});
+
+describe("sniffImageType", () => {
+  const withHeader = (...header: number[]) => Uint8Array.from([...header, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+  it("detects JPEG", () => {
+    expect(sniffImageType(withHeader(0xff, 0xd8, 0xff, 0xe0))).toBe("jpeg");
+  });
+
+  it("detects PNG", () => {
+    expect(sniffImageType(withHeader(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a))).toBe("png");
+  });
+
+  it("detects GIF and BMP as re-encodable", () => {
+    expect(sniffImageType(withHeader(0x47, 0x49, 0x46, 0x38))).toBe("other");
+    expect(sniffImageType(withHeader(0x42, 0x4d))).toBe("other");
+  });
+
+  it("detects WebP, which needs the 8-byte offset check", () => {
+    const webp = Uint8Array.from([
+      0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+    ]);
+    expect(sniffImageType(webp)).toBe("other");
+  });
+
+  it("rejects a RIFF container that is not WebP", () => {
+    const wav = Uint8Array.from([
+      0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45,
+    ]);
+    expect(sniffImageType(wav)).toBeNull();
+  });
+
+  it("rejects a PDF, a text file and an empty file", () => {
+    expect(sniffImageType(new TextEncoder().encode("%PDF-1.7"))).toBeNull();
+    expect(sniffImageType(new TextEncoder().encode("hello"))).toBeNull();
+    expect(sniffImageType(new Uint8Array(0))).toBeNull();
+  });
+
+  it("does not read past the end on a truncated header", () => {
+    expect(sniffImageType(Uint8Array.from([0xff, 0xd8]))).toBeNull();
+    expect(sniffImageType(Uint8Array.from([0x52, 0x49, 0x46, 0x46]))).toBeNull();
+  });
+
+  it("isImageBytes agrees with the sniffer", () => {
+    expect(isImageBytes(withHeader(0xff, 0xd8, 0xff))).toBe(true);
+    expect(isImageBytes(new TextEncoder().encode("%PDF-1.7"))).toBe(false);
+  });
+});
+
+describe("pxToPoints", () => {
+  it("converts 96 DPI pixels to 72 DPI points", () => {
+    expect(pxToPoints(96)).toBe(72);
+  });
+
+  it("keeps a 1920x1080 image a sane page size", () => {
+    expect(pxToPoints(1920)).toBe(1440);
+    expect(pxToPoints(1080)).toBe(810);
+  });
+
+  it("handles zero", () => {
+    expect(pxToPoints(0)).toBe(0);
   });
 });

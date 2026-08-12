@@ -146,7 +146,7 @@ endpoints below are unused and can be removed on the next backend change.
 ## PDF Toolkit
 
 `/pdf-toolkit` runs entirely in the browser — no PDF, and no password, is ever
-uploaded. The page opens on a card grid of the four tools; picking one replaces the
+uploaded. The page opens on a card grid of the five tools; picking one replaces the
 grid with that tool, and an "All PDF tools" link goes back:
 
 - **Merge** — reorder files by dragging the grip or with the ↑/↓ buttons, add more
@@ -155,6 +155,11 @@ grid with that tool, and an "All PDF tools" link goes back:
   password when you supply it. It cannot guess or crack passwords.
 - **To Image** — renders pages to PNG or JPEG at 72/150/300 DPI, single download or
   ZIP.
+- **Image to PDF** — JPEG, PNG, GIF, BMP and WebP, reorderable, one image per page.
+  Each page is sized to its own image at 96 DPI, so nothing is cropped or
+  letterboxed — a 1920×1080 screenshot becomes a 20×11.3in page, not an A4 one.
+  JPEG and PNG embed directly; the rest are decoded by the browser and re-encoded
+  to JPEG, since pdf-lib can only embed those two.
 - **Compress** — lossless by default; an aggressive mode rasterises pages for far
   bigger savings at the cost of selectable text.
 

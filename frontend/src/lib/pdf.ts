@@ -315,3 +315,99 @@ export const compressAggressive = async (
     pages.forEach((page) => URL.revokeObjectURL(page.url));
   }
 };
+
+/** Image formats we accept. "other" is anything the browser can decode but pdf-lib cannot embed. */
+export type ImageKind = "jpeg" | "png" | "other";
+
+const startsWith = (bytes: Uint8Array, signature: readonly number[], offset = 0) =>
+  bytes.length >= offset + signature.length &&
+  signature.every((byte, index) => bytes[offset + index] === byte);
+
+/**
+ * Sniff an image by magic bytes. Extension and MIME type are user-controlled;
+ * only the header is evidence. Returns null if it is not an image we accept.
+ *
+ * pdf-lib can embed JPEG and PNG directly. Everything else has to be re-encoded
+ * through a canvas first, so the kind is part of the return value.
+ */
+export const sniffImageType = (bytes: Uint8Array): ImageKind | null => {
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "png";
+  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "other"; // GIF8
+  if (startsWith(bytes, [0x42, 0x4d])) return "other"; // BM
+  // RIFF....WEBP
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8))
+    return "other";
+  return null;
+};
+
+export const isImageBytes = (bytes: Uint8Array): boolean => sniffImageType(bytes) !== null;
+
+/**
+ * Browsers report image pixels at 96 DPI; a PDF point is 1/72 inch. Converting
+ * keeps a 96 DPI screen image the same physical size on the page.
+ */
+export const pxToPoints = (px: number): number => (px * 72) / 96;
+
+/**
+ * Build a PDF from images, one image per page, each page sized to its own image.
+ *
+ * ponytail: no page-size options — every page simply matches its image, so
+ * nothing is letterboxed or cropped. Add A4/Letter/fit presets if someone
+ * actually wants printable uniform pages.
+ */
+export const imagesToPdf = async (
+  images: readonly Uint8Array[],
+  onProgress?: (done: number, total: number) => void,
+): Promise<Uint8Array> => {
+  const { PDFDocument } = await loadPdfLib();
+  const out = await PDFDocument.create();
+
+  for (let index = 0; index < images.length; index += 1) {
+    const source = images[index];
+    const kind = sniffImageType(source);
+    // Anything pdf-lib cannot embed goes through the browser's own decoder and
+    // comes back out as JPEG. That covers GIF, BMP, WebP and friends.
+    const embedded =
+      kind === "png"
+        ? await out.embedPng(source)
+        : await out.embedJpg(kind === "jpeg" ? source : await reencodeToJpeg(source));
+
+    const width = pxToPoints(embedded.width);
+    const height = pxToPoints(embedded.height);
+    const page = out.addPage([width, height]);
+    page.drawImage(embedded, { x: 0, y: 0, width, height });
+    onProgress?.(index + 1, images.length);
+  }
+
+  return out.save({ useObjectStreams: true, objectsPerTick: 200 });
+};
+
+/** Decode with the browser and re-encode as JPEG, for formats pdf-lib cannot embed. */
+const reencodeToJpeg = async (bytes: Uint8Array): Promise<Uint8Array> => {
+  const bitmap = await createImageBitmap(new Blob([bytes as BlobPart]));
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Could not get a 2D canvas context.");
+    // White ground: JPEG has no alpha, and transparent pixels would go black.
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0);
+
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob(
+        (result) => (result ? resolve(result) : reject(new Error("Could not encode the image."))),
+        "image/jpeg",
+        0.92,
+      );
+    });
+    canvas.width = 0;
+    canvas.height = 0;
+    return new Uint8Array(await blob.arrayBuffer());
+  } finally {
+    bitmap.close();
+  }
+};
