@@ -1,4 +1,4 @@
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload } from "lucide-react";
 import { formatBytes, isPdfBytes } from "@/lib/pdf";
@@ -28,7 +28,6 @@ export function PdfDropzone({
   const [isOver, setIsOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
-  const inputRef = useRef<HTMLInputElement>(null);
   const inputId = useId();
   const prefersReducedMotion = useReducedMotion();
 
@@ -52,7 +51,7 @@ export function PdfDropzone({
           );
         }
         accepted.push({
-          id: `${file.name}-${file.size}-${accepted.length}`,
+          id: crypto.randomUUID(),
           name: file.name,
           size: file.size,
           bytes,
@@ -68,7 +67,8 @@ export function PdfDropzone({
 
   return (
     <div className="space-y-2">
-      <motion.div
+      <motion.label
+        htmlFor={inputId}
         // Highlight the instant the file is over the zone, not on drop.
         onDragEnter={(event) => {
           event.preventDefault();
@@ -84,7 +84,6 @@ export function PdfDropzone({
           setIsOver(false);
           void handleFiles(event.dataTransfer.files);
         }}
-        onClick={() => inputRef.current?.click()}
         animate={{ scale: isOver && !prefersReducedMotion ? 1.01 : 1 }}
         transition={{ type: "spring", bounce: 0, duration: 0.25 }}
         className={cn(
@@ -93,11 +92,8 @@ export function PdfDropzone({
         )}
       >
         <Upload className="h-6 w-6 text-muted-foreground" aria-hidden="true" />
-        <label htmlFor={inputId} className="cursor-pointer text-sm text-muted-foreground">
-          {label}
-        </label>
+        <span className="text-sm text-muted-foreground">{label}</span>
         <input
-          ref={inputRef}
           id={inputId}
           type="file"
           accept="application/pdf,.pdf"
@@ -109,7 +105,7 @@ export function PdfDropzone({
             event.target.value = "";
           }}
         />
-      </motion.div>
+      </motion.label>
 
       {errors.map((message) => (
         <p key={message} role="alert" className="text-sm text-destructive">
