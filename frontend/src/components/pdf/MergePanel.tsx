@@ -42,7 +42,11 @@ export function MergePanel() {
     }
   }, []);
 
-  const usable = rows.filter((row) => row.error === null);
+  // A row only counts once inspectPdf has actually resolved for it — otherwise
+  // a file dropped while loadPdfLib is still loading (a ~1MB dynamic import)
+  // could be merged unvalidated, and one bad file would fail the whole batch.
+  const usable = rows.filter((row) => row.pageCount !== null && row.error === null);
+  const pendingCount = rows.filter((row) => row.pageCount === null && row.error === null).length;
 
   const onExport = async () => {
     setFailure(null);
@@ -96,10 +100,12 @@ export function MergePanel() {
       {rows.length > 0 && (
         // Translucent action bar with the list scrolling under it.
         <div className="sticky bottom-0 flex items-center justify-between gap-3 rounded-xl border border-border bg-card/70 px-4 py-3 backdrop-blur-md reduced-transparency:bg-card reduced-transparency:backdrop-blur-none">
-          <p className="text-sm text-muted-foreground tabular-nums">
+          <p className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
             {progress
               ? `Merging file ${progress.done} of ${progress.total}`
-              : `${usable.length} file${usable.length === 1 ? "" : "s"} ready`}
+              : pendingCount > 0
+                ? `Checking ${pendingCount} file${pendingCount === 1 ? "" : "s"}…`
+                : `${usable.length} file${usable.length === 1 ? "" : "s"} ready`}
           </p>
           <Button onClick={() => void onExport()} disabled={usable.length < 2 || progress !== null}>
             {progress ? (
@@ -139,7 +145,13 @@ function MergeRowItem({ row, index, total, onMove, onRemove }: MergeRowItemProps
           ? { duration: 0 }
           : { type: "spring", bounce: 0.2, duration: 0.4 }
       }
-      whileDrag={prefersReducedMotion ? undefined : { scale: 1.02, zIndex: 1 }}
+      // Own transition so the pick-up scale pop doesn't inherit the settle's
+      // bounce spring — bounce is earned only by the post-drop settle.
+      whileDrag={
+        prefersReducedMotion
+          ? undefined
+          : { scale: 1.02, zIndex: 1, transition: { duration: 0.15 } }
+      }
       className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-sm"
     >
       <button
