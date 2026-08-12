@@ -275,3 +275,37 @@ export const downloadBlob = (blob: Blob, filename: string): void => {
   anchor.click();
   URL.revokeObjectURL(url);
 };
+
+/**
+ * Raster compression: render each page to JPEG and rebuild the document from
+ * those images at the original page size. Big savings on scans; the text stops
+ * being text. This is renderPdfToImages piped into a pdf-lib rebuild.
+ */
+export const compressAggressive = async (
+  bytes: Uint8Array,
+  {
+    dpi,
+    quality,
+    onProgress,
+  }: { dpi: number; quality: number; onProgress?: (done: number, total: number) => void },
+): Promise<{ bytes: Uint8Array; saved: number }> => {
+  const { PDFDocument } = await loadPdfLib();
+  const pages = await renderPdfToImages(bytes, { dpi, format: "jpeg", quality, onProgress });
+
+  try {
+    const out = await PDFDocument.create();
+    const scale = dpiToScale(dpi);
+    for (const page of pages) {
+      const jpeg = await out.embedJpg(new Uint8Array(await page.blob.arrayBuffer()));
+      // Divide by scale to restore the original page dimensions in PDF units.
+      const width = jpeg.width / scale;
+      const height = jpeg.height / scale;
+      const target = out.addPage([width, height]);
+      target.drawImage(jpeg, { x: 0, y: 0, width, height });
+    }
+    const candidate = await out.save({ useObjectStreams: true, objectsPerTick: 200 });
+    return pickSmaller(bytes, candidate);
+  } finally {
+    pages.forEach((page) => URL.revokeObjectURL(page.url));
+  }
+};

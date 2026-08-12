@@ -3,7 +3,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { FileStack, Image as ImageIcon, Shrink, Unlock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { CompressPanel } from "@/components/pdf/CompressPanel";
 import { MergePanel } from "@/components/pdf/MergePanel";
 import { ToImagePanel } from "@/components/pdf/ToImagePanel";
 import { UnlockPanel } from "@/components/pdf/UnlockPanel";
@@ -83,13 +83,7 @@ export function PdfToolkit() {
           {mode === "merge" && <MergePanel />}
           {mode === "unlock" && <UnlockPanel />}
           {mode === "to-image" && <ToImagePanel />}
-          {mode === "compress" && (
-            <Card>
-              <CardContent className="py-10 text-center text-sm text-muted-foreground">
-                {mode} panel coming in a later task.
-              </CardContent>
-            </Card>
-          )}
+          {mode === "compress" && <CompressPanel />}
         </motion.div>
       </AnimatePresence>
     </div>
