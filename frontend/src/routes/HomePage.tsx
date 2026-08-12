@@ -3,6 +3,7 @@ import {
   Binary,
   Braces,
   Clock3,
+  Download,
   FileDown,
   FileStack,
   Fingerprint,
@@ -44,6 +45,7 @@ const toolIcons: Record<ToolId, LucideIcon> = {
   "regex-tester": ScanSearch,
   "timestamp-converter": Clock3,
   "pdf-toolkit": FileStack,
+  downloader: Download,
 };
 
 export function HomePage() {

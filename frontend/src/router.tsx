@@ -14,6 +14,11 @@ const PdfToolkitPage = lazy(() =>
     default: module.PdfToolkitPage,
   })),
 );
+const DownloaderPage = lazy(() =>
+  import("@/routes/DownloaderPage").then((module) => ({
+    default: module.DownloaderPage,
+  })),
+);
 const JsonBeautifierPage = lazy(() =>
   import("@/routes/JsonBeautifierPage").then((module) => ({
     default: module.JsonBeautifierPage,
@@ -139,6 +144,12 @@ const pdfToolkitRoute = createRoute({
   component: withLazySuspense(PdfToolkitPage)
 });
 
+const downloaderRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/downloader",
+  component: withLazySuspense(DownloaderPage)
+});
+
 const jsonBeautifierRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/json-beautifier",
@@ -215,6 +226,7 @@ const routeTree = rootRoute.addChildren([
   homeRoute,
   markdownToPdfRoute,
   pdfToolkitRoute,
+  downloaderRoute,
   legacyAudioscribeRoute,
   jsonBeautifierRoute,
   jsonToToonRoute,
