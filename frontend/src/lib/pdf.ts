@@ -102,19 +102,20 @@ const isStillEncrypted = async (bytes: Uint8Array): Promise<boolean> => {
  * Decrypt and return an unencrypted copy.
  *
  * Loading with the right password and calling save() is NOT enough: the original
- * encryption dictionary survives as an orphaned indirect object alongside a
- * PDFInvalidObject remnant, and the output reloads as encrypted. Verified
- * experimentally against generated fixtures.
+ * encryption dictionary survives as an orphaned indirect object, and the output
+ * reloads as encrypted. Verified experimentally against generated fixtures.
  *
- * Tier 1 deletes those objects, preserving the object graph so outlines, bookmarks
- * and form fields survive. Tier 2 rebuilds page-by-page, which always clears
- * encryption but drops those structures — hence `rebuilt`, which the UI surfaces.
+ * Tier 1 deletes that dictionary, preserving the object graph so outlines,
+ * bookmarks, form fields — and any pre-existing malformed-but-referenced objects
+ * from older generators — survive untouched. Tier 2 rebuilds page-by-page, which
+ * always clears encryption but drops those structures — hence `rebuilt`, which
+ * the UI surfaces.
  */
 export const decryptPdf = async (
   bytes: Uint8Array,
   password: string,
 ): Promise<{ bytes: Uint8Array; rebuilt: boolean }> => {
-  const { PDFDocument, PDFDict, PDFInvalidObject, PDFName } = await loadPdfLib();
+  const { PDFDocument, PDFDict, PDFName } = await loadPdfLib();
 
   // Throws on a wrong password — callers surface that as an inline field error.
   const doc = await PDFDocument.load(bytes, { password });
@@ -123,7 +124,7 @@ export const decryptPdf = async (
   for (const [ref, object] of doc.context.enumerateIndirectObjects()) {
     const isEncryptionDict =
       object instanceof PDFDict && object.get(PDFName.of("Filter")) === PDFName.of("Standard");
-    if (isEncryptionDict || object instanceof PDFInvalidObject) {
+    if (isEncryptionDict) {
       doc.context.delete(ref);
     }
   }
