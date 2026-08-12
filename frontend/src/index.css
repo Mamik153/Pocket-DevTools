@@ -2,6 +2,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* Tailwind has no built-in variant for this preference. Used by translucent
+   surfaces so they fall back to solid for users who ask for less transparency. */
+@custom-variant reduced-transparency (@media (prefers-reduced-transparency: reduce));
+
 @theme {
   --font-sans: "Space Grotesk", "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;

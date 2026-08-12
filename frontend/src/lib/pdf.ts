@@ -163,3 +163,14 @@ export const compressLossless = async (
   });
   return pickSmaller(bytes, candidate);
 };
+
+/** Trigger a browser download. The object URL is revoked so the blob can be freed. */
+export const downloadBytes = (bytes: Uint8Array, filename: string): void => {
+  const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+};
