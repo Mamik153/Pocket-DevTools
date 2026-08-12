@@ -101,6 +101,7 @@ curl http://localhost:8000/health
 ## Frontend Tools
 
 - Markdown to PDF
+- PDF Toolkit
 - JSON Toolkit
 - Prompt Improver
 - URL Encoder/Decoder
@@ -141,6 +142,46 @@ Share snapshot support:
 The tool was previously called Audioscribe and had a text-to-speech mode. That mode
 is gone from the UI; `/audioscribe` now redirects to `/markdown-to-pdf`. The TTS
 endpoints below are unused and can be removed on the next backend change.
+
+## PDF Toolkit
+
+`/pdf-toolkit` runs entirely in the browser — no PDF, and no password, is ever
+uploaded. Four tabs share one page:
+
+- **Merge** — reorder files by dragging the grip or with the ↑/↓ buttons, add more
+  without losing the list, export as one PDF.
+- **Unlock** — removes permission restrictions with no prompt, and removes an open
+  password when you supply it. It cannot guess or crack passwords.
+- **To Image** — renders pages to PNG or JPEG at 72/150/300 DPI, single download or
+  ZIP.
+- **Compress** — lossless by default; an aggressive mode rasterises pages for far
+  bigger savings at the cost of selectable text.
+
+Libraries load on demand: `@cantoo/pdf-lib` (MIT), `pdfjs-dist` (Apache-2.0), and
+`fflate` (MIT) are all dynamically imported from `frontend/src/lib/pdf.ts` and stay
+out of the initial bundle.
+
+Two implementation notes worth keeping:
+
+- Decrypting is not just `load({ password })` then `save()`. The original encryption
+  dictionary survives as an orphaned object and the output reloads as encrypted, so
+  `decryptPdf` deletes only that dictionary — it deliberately leaves other orphaned
+  objects alone, since discarding those risks losing legitimate malformed-but-referenced
+  content from older PDF generators — then verifies the result with a plain, optionless
+  load. Only if that verification still finds the file encrypted does it fall back to a
+  page-level rebuild, which always clears encryption but drops outlines, bookmarks, and
+  form fields.
+- Compression can produce a **larger** file — object streams add overhead a small
+  document never recovers (measured: a 677-byte PDF compresses losslessly to a
+  686-byte candidate). Both modes compare sizes and return the original when the
+  candidate is not strictly smaller.
+
+Unlock, To Image, and Compress each guard against a superseded run with a
+request-generation counter, so dropping a second file mid-operation cannot let a
+stale result overwrite a newer one; Merge doesn't need this since it accumulates a
+list of files rather than replacing a single result.
+
+Run the unit tests with `cd frontend && npm test`.
 
 ## Persistence Notes
 
