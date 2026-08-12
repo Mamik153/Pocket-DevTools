@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -77,18 +84,21 @@ function ScaffoldNodeEditor({
             </p>
           )}
 
-          <select
+          <Select
             value={node.type}
-            onChange={(event) => onNodeTypeChange(node.id, event.target.value as ScaffoldNodeType)}
-            className="h-10 rounded-md border border-input bg-background/60 px-3 text-sm text-foreground"
-            aria-label="Scaffold node type"
+            onValueChange={(value) => onNodeTypeChange(node.id, value as ScaffoldNodeType)}
           >
-            {NODE_TYPE_OPTIONS.map((typeOption) => (
-              <option key={typeOption} value={typeOption}>
-                {typeOption}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="bg-background/60" aria-label="Scaffold node type">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {NODE_TYPE_OPTIONS.map((typeOption) => (
+                <SelectItem key={typeOption} value={typeOption}>
+                  {typeOption}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {canHaveChildren ? (
             <Button size="sm" variant="secondary" onClick={() => onAddChild(node.id)}>

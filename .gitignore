@@ -2,6 +2,7 @@
 frontend/node_modules
 frontend/dist
 frontend/.vite
+frontend/public/pdfjs
 frontend/.env
 frontend/*.tsbuildinfo
 
@@ -18,3 +19,7 @@ backend/.pytest_cache
 .idea
 .vscode
 .vercel
+
+# Subagent-driven-development scratch (ledger, briefs, review packages).
+.superpowers/
+.env*

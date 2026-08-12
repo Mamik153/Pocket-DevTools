@@ -13,6 +13,7 @@ const lastmod = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 const entries = [
   { path: "/", changefreq: "weekly", priority: "1.0" },
   { path: "/markdown-to-pdf", changefreq: "weekly", priority: "0.9" },
+  { path: "/pdf-toolkit", changefreq: "weekly", priority: "0.9" },
   { path: "/json-compare", changefreq: "weekly", priority: "0.85" },
   { path: "/json-beautifier", changefreq: "weekly", priority: "0.7" },
   { path: "/json-to-toon", changefreq: "weekly", priority: "0.7" },

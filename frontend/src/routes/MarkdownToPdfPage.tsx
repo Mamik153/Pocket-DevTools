@@ -362,6 +362,12 @@ export function MarkdownToPdfPage() {
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!-- The popup is about:blank, so it has no base URL of its own. The cloned
+         <link> tags below carry root-relative hrefs (/assets/index-*.css in a
+         production build), which cannot resolve against about:blank — without
+         this the app stylesheet silently fails to load and the export falls back
+         to UA defaults, losing every prose margin. Must stay above ${"$"}{styles}. -->
+    <base href="${document.baseURI}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Markdown Preview PDF</title>
     <link rel="stylesheet" href="${FONT_STYLESHEET_HREF}" />

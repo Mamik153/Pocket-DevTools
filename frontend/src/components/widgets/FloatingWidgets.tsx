@@ -10,6 +10,13 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   RelativeTime,
   RelativeTimeZone,
   RelativeTimeZoneDate,
@@ -403,22 +410,26 @@ export function FloatingWidgets() {
                     >
                       Currency
                     </label>
-                    <select
-                      id="currency-select"
+                    <Select
                       value={selectedCurrency.code}
-                      onChange={(event) =>
-                        setSelectedCurrencyCode(
-                          event.target.value as TargetCurrencyCode,
-                        )
+                      onValueChange={(value) =>
+                        setSelectedCurrencyCode(value as TargetCurrencyCode)
                       }
-                      className="h-9 w-full rounded-md border border-input bg-background/70 px-2 text-sm text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      {TARGET_CURRENCIES.map((currency) => (
-                        <option key={currency.code} value={currency.code}>
-                          {currency.label} ({currency.code})
-                        </option>
-                      ))}
-                    </select>
+                      <SelectTrigger
+                        id="currency-select"
+                        className="h-9 w-full bg-background/70 px-2"
+                      >
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TARGET_CURRENCIES.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.label} ({currency.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="mt-2 grid grid-cols-[1fr_auto_1fr] items-end gap-2">
