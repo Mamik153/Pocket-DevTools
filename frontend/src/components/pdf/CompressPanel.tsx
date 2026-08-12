@@ -9,6 +9,7 @@ import {
   compressLossless,
   downloadBytes,
   formatBytes,
+  inspectPdf,
 } from "@/lib/pdf";
 
 interface Result {
@@ -41,6 +42,28 @@ export function CompressPanel() {
       setFailure(null);
       setResult(null);
       setProgress({ done: 0, total: 0 });
+
+      // Detect a locked file up front rather than guessing from a caught
+      // compress failure — that catch-all also fires for corrupt files and
+      // decode failures, where "unlock it first" is actively misleading. This
+      // also resolves M5: pdf-lib's lossless load throws on a permission-only
+      // PDF while pdf.js's aggressive path opens it fine, so without this check
+      // the same file would fail one mode and succeed the other.
+      try {
+        const info = await inspectPdf(target.bytes);
+        if (requestId !== requestIdRef.current) return;
+        if (info.isEncrypted) {
+          setFailure("This PDF is locked. Unlock it in the Unlock tab first.");
+          setProgress(null);
+          return;
+        }
+      } catch {
+        if (requestId !== requestIdRef.current) return;
+        setFailure("This PDF could not be read. It may be corrupt or unreadable.");
+        setProgress(null);
+        return;
+      }
+
       try {
         const outcome = usedAggressive
           ? await compressAggressive(target.bytes, {
@@ -56,7 +79,7 @@ export function CompressPanel() {
         setResult({ ...outcome, originalSize: target.bytes.length, aggressive: usedAggressive });
       } catch {
         if (requestId !== requestIdRef.current) return;
-        setFailure("This PDF could not be compressed. If it is locked, unlock it first.");
+        setFailure("This PDF could not be compressed. It may be corrupt or unreadable.");
       } finally {
         if (requestId === requestIdRef.current) setProgress(null);
       }
@@ -154,10 +177,19 @@ export function CompressPanel() {
           {result.saved === 0 ? (
             // Never dress a non-saving as a win, and never offer a bigger download.
             <p className="text-sm">
-              Already optimised — nothing to save. The original is
-              {" "}
-              <span className="tabular-nums">{formatBytes(result.originalSize)}</span>
-              {result.aggressive ? "" : ". Try aggressive mode if this is a scanned document."}
+              {result.aggressive ? (
+                <>
+                  Rasterising made this document larger, so the original file was
+                  kept — there is nothing smaller to download. Try lossless mode
+                  for text documents.
+                </>
+              ) : (
+                <>
+                  Already optimised — nothing to save. The original is{" "}
+                  <span className="tabular-nums">{formatBytes(result.originalSize)}</span>.
+                  Try aggressive mode if this is a scanned document.
+                </>
+              )}
             </p>
           ) : (
             <>
