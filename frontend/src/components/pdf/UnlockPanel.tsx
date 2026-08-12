@@ -12,7 +12,8 @@ type Status =
   | { kind: "needs-password" }
   | { kind: "working" }
   | { kind: "done"; bytes: Uint8Array; rebuilt: boolean }
-  | { kind: "error"; message: string };
+  | { kind: "error"; message: string }
+  | { kind: "corrupt"; message: string };
 
 /**
  * pdf-lib reports a wrong/missing password as a plain `Error` with no
@@ -45,7 +46,7 @@ export function UnlockPanel() {
     } catch (error) {
       if (requestId !== requestIdRef.current) return;
       if (!isPasswordError(error)) {
-        setStatus({ kind: "error", message: "This PDF could not be read. It may be corrupt." });
+        setStatus({ kind: "corrupt", message: "This PDF could not be read. It may be corrupt." });
         return;
       }
       setStatus(
@@ -74,7 +75,7 @@ export function UnlockPanel() {
         await attempt(accepted, "", requestId);
       } catch {
         if (requestId !== requestIdRef.current) return;
-        setStatus({ kind: "error", message: "This PDF could not be read. It may be corrupt." });
+        setStatus({ kind: "corrupt", message: "This PDF could not be read. It may be corrupt." });
       }
     },
     [attempt],
@@ -99,6 +100,12 @@ export function UnlockPanel() {
       {status.kind === "not-encrypted" && (
         <p className="text-sm text-muted-foreground">
           {file?.name} is not locked — there is nothing to remove.
+        </p>
+      )}
+
+      {status.kind === "corrupt" && (
+        <p role="alert" className="text-sm text-destructive">
+          {status.message}
         </p>
       )}
 
