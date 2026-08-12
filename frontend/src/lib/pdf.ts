@@ -164,15 +164,9 @@ export const compressLossless = async (
   return pickSmaller(bytes, candidate);
 };
 
-/** Trigger a browser download. The object URL is revoked so the blob can be freed. */
+/** Trigger a browser download of PDF bytes. Thin wrapper around downloadBlob. */
 export const downloadBytes = (bytes: Uint8Array, filename: string): void => {
-  const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = filename;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadBlob(new Blob([bytes as BlobPart], { type: "application/pdf" }), filename);
 };
 
 export interface RenderedPage {
@@ -201,8 +195,20 @@ export const renderPdfToImages = async (
     import.meta.url,
   ).toString();
 
+  // Without these, pdf.js's binary data factory throws instead of fetching, and
+  // CJK text (unembedded, CMap-based) plus JPEG2000/JBIG2 images render as
+  // silently blank pages. Assets are copied from pdfjs-dist at build time by
+  // scripts/copy-pdfjs-assets.mjs. BASE_URL keeps this correct under a sub-path deploy.
+  const assetsBase = `${import.meta.env.BASE_URL}pdfjs/`;
+
   // pdf.js takes ownership of the buffer, so hand it a copy.
-  const loadingTask = pdfjs.getDocument({ data: bytes.slice() });
+  const loadingTask = pdfjs.getDocument({
+    data: bytes.slice(),
+    cMapUrl: `${assetsBase}cmaps/`,
+    cMapPacked: true,
+    standardFontDataUrl: `${assetsBase}standard_fonts/`,
+    wasmUrl: `${assetsBase}wasm/`,
+  });
   const scale = dpiToScale(dpi);
   const mimeType = format === "png" ? "image/png" : "image/jpeg";
   const pages: RenderedPage[] = [];
