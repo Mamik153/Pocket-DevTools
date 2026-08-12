@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Download, Loader2, LockOpen } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
@@ -14,20 +14,40 @@ type Status =
   | { kind: "done"; bytes: Uint8Array; rebuilt: boolean }
   | { kind: "error"; message: string };
 
+/**
+ * pdf-lib reports a wrong/missing password as a plain `Error` with no
+ * distinct class, so the message text is the only signal available. Coupled
+ * to today's @cantoo/pdf-lib strings ("NEEDS PASSWORD", "Password
+ * incorrect") — if a future version rewords them, this predicate is where it
+ * breaks, and every non-matching error (e.g. a corrupt file) falls through
+ * to the generic "could not be read" branch instead.
+ */
+const isPasswordError = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.message.includes("NEEDS PASSWORD") || error.message.includes("Password incorrect"));
+
 export function UnlockPanel() {
   const [file, setFile] = useState<AcceptedPdf | null>(null);
+  // The password lives only in component state. Switching tabs unmounts this
+  // panel, which discards the state along with it — nothing is persisted or logged.
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  // Generation counter: guards against a superseded drop/attempt resolving
+  // after a newer one and overwriting its result.
+  const requestIdRef = useRef(0);
 
-  // The password never outlives the component.
-  useEffect(() => () => setPassword(""), []);
-
-  const attempt = useCallback(async (target: AcceptedPdf, candidate: string) => {
+  const attempt = useCallback(async (target: AcceptedPdf, candidate: string, requestId: number) => {
     setStatus({ kind: "working" });
     try {
       const result = await decryptPdf(target.bytes, candidate);
+      if (requestId !== requestIdRef.current) return;
       setStatus({ kind: "done", bytes: result.bytes, rebuilt: result.rebuilt });
-    } catch {
+    } catch (error) {
+      if (requestId !== requestIdRef.current) return;
+      if (!isPasswordError(error)) {
+        setStatus({ kind: "error", message: "This PDF could not be read. It may be corrupt." });
+        return;
+      }
       setStatus(
         candidate === ""
           ? { kind: "needs-password" }
@@ -38,19 +58,22 @@ export function UnlockPanel() {
 
   const onAccept = useCallback(
     async ([accepted]: AcceptedPdf[]) => {
+      const requestId = ++requestIdRef.current;
       setFile(accepted);
       setPassword("");
       setStatus({ kind: "working" });
       try {
         const info = await inspectPdf(accepted.bytes);
+        if (requestId !== requestIdRef.current) return;
         if (!info.isEncrypted) {
           setStatus({ kind: "not-encrypted" });
           return;
         }
         // An empty password clears the whole permission-restricted class with
         // no prompt at all.
-        await attempt(accepted, "");
+        await attempt(accepted, "", requestId);
       } catch {
+        if (requestId !== requestIdRef.current) return;
         setStatus({ kind: "error", message: "This PDF could not be read. It may be corrupt." });
       }
     },
@@ -84,7 +107,7 @@ export function UnlockPanel() {
           className="space-y-2"
           onSubmit={(event) => {
             event.preventDefault();
-            void attempt(file, password);
+            void attempt(file, password, requestIdRef.current);
           }}
         >
           <Label htmlFor="pdf-password">Password for {file.name}</Label>
