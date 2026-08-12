@@ -203,38 +203,49 @@ export const renderPdfToImages = async (
 
   // pdf.js takes ownership of the buffer, so hand it a copy.
   const loadingTask = pdfjs.getDocument({ data: bytes.slice() });
-  const doc = await loadingTask.promise;
   const scale = dpiToScale(dpi);
   const mimeType = format === "png" ? "image/png" : "image/jpeg";
   const pages: RenderedPage[] = [];
 
   try {
-    for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
-      const page = await doc.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.ceil(viewport.width);
-      canvas.height = Math.ceil(viewport.height);
+    // Awaiting loadingTask.promise inside the try means a rejection here (e.g.
+    // a locked PDF throwing PasswordException) still runs the finally below,
+    // instead of leaking the PDFWorker that getDocument() spins up synchronously.
+    const doc = await loadingTask.promise;
+    try {
+      for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+        const page = await doc.getPage(pageNumber);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
 
-      // pdf.js v6: `canvas` is the required parameter and `canvasContext` is the
-      // legacy one. Passing both is ambiguous — the type docs state that if the
-      // context is used, `canvas` must be null. Pass the canvas alone.
-      await page.render({ canvas, viewport }).promise;
+        // pdf.js v6: `canvas` is the required parameter and `canvasContext` is the
+        // legacy one. Passing both is ambiguous — the type docs state that if the
+        // context is used, `canvas` must be null. Pass the canvas alone.
+        await page.render({ canvas, viewport }).promise;
 
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        canvas.toBlob(
-          (result) => (result ? resolve(result) : reject(new Error("Could not encode the page."))),
-          mimeType,
-          format === "jpeg" ? quality : undefined,
-        );
-      });
+        const blob = await new Promise<Blob>((resolve, reject) => {
+          canvas.toBlob(
+            (result) => (result ? resolve(result) : reject(new Error("Could not encode the page."))),
+            mimeType,
+            format === "jpeg" ? quality : undefined,
+          );
+        });
 
-      pages.push({ pageNumber, blob, url: URL.createObjectURL(blob) });
-      page.cleanup();
-      // Zero the canvas so a long document does not accumulate memory.
-      canvas.width = 0;
-      canvas.height = 0;
-      onProgress?.(pageNumber, doc.numPages);
+        pages.push({ pageNumber, blob, url: URL.createObjectURL(blob) });
+        page.cleanup();
+        // Zero the canvas so a long document does not accumulate memory.
+        canvas.width = 0;
+        canvas.height = 0;
+        onProgress?.(pageNumber, doc.numPages);
+      }
+    } catch (error) {
+      // A page failing partway through (e.g. page 5 of 10) leaves earlier
+      // pages' object URLs live with no reference left to revoke them. Revoke
+      // what was already created before propagating the failure.
+      pages.forEach((page) => URL.revokeObjectURL(page.url));
+      throw error;
     }
   } finally {
     // PDFDocumentProxy has no destroy() of its own; only the loading task does.

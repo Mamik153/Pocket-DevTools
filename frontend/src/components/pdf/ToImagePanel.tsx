@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, FileArchive, Loader2 } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
@@ -19,12 +19,16 @@ export function ToImagePanel() {
   const [pages, setPages] = useState<RenderedPage[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // Generation counter: guards against a superseded drop/re-render resolving
+  // after a newer one and overwriting its result. Same pattern as UnlockPanel.
+  const requestIdRef = useRef(0);
 
   // Object URLs are not garbage collected. Revoke them when they are replaced.
   useEffect(() => () => pages.forEach((page) => URL.revokeObjectURL(page.url)), [pages]);
 
   const render = useCallback(
     async (target: AcceptedPdf) => {
+      const requestId = ++requestIdRef.current;
       setFailure(null);
       setPages([]);
       setProgress({ done: 0, total: 0 });
@@ -33,13 +37,23 @@ export function ToImagePanel() {
           dpi,
           format,
           quality,
-          onProgress: (done, total) => setProgress({ done, total }),
+          onProgress: (done, total) => {
+            if (requestId !== requestIdRef.current) return;
+            setProgress({ done, total });
+          },
         });
+        if (requestId !== requestIdRef.current) {
+          // A newer request already won; this batch has no owner left to
+          // revoke it via the [pages] effect, so revoke it here.
+          rendered.forEach((page) => URL.revokeObjectURL(page.url));
+          return;
+        }
         setPages(rendered);
       } catch {
+        if (requestId !== requestIdRef.current) return;
         setFailure("This PDF could not be rendered. If it is locked, unlock it first.");
       } finally {
-        setProgress(null);
+        if (requestId === requestIdRef.current) setProgress(null);
       }
     },
     [dpi, format, quality],
@@ -47,6 +61,11 @@ export function ToImagePanel() {
 
   const baseName = file?.name.replace(/\.pdf$/i, "") ?? "page";
   const extension = format === "png" ? "png" : "jpg";
+  // Pad to the width of the total page count so a 1000+ page document still
+  // sorts correctly ("0999" < "1000"), not a fixed 3 digits.
+  const pageNumberWidth = String(pages.length).length;
+  const pageFileName = (pageNumber: number) =>
+    `${baseName}-${String(pageNumber).padStart(pageNumberWidth, "0")}.${extension}`;
 
   return (
     <div className="space-y-4">
@@ -141,7 +160,7 @@ export function ToImagePanel() {
               onClick={async () => {
                 const zipped = await zipFiles(
                   pages.map((page) => ({
-                    name: `${baseName}-${String(page.pageNumber).padStart(3, "0")}.${extension}`,
+                    name: pageFileName(page.pageNumber),
                     blob: page.blob,
                   })),
                 );
@@ -165,12 +184,7 @@ export function ToImagePanel() {
                   variant="outline"
                   size="sm"
                   className="w-full"
-                  onClick={() =>
-                    downloadBlob(
-                      page.blob,
-                      `${baseName}-${String(page.pageNumber).padStart(3, "0")}.${extension}`,
-                    )
-                  }
+                  onClick={() => downloadBlob(page.blob, pageFileName(page.pageNumber))}
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
                   Page {page.pageNumber}
