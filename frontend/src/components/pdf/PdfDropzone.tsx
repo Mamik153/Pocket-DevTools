@@ -34,11 +34,19 @@ export function PdfDropzone({
   const handleFiles = useCallback(
     async (fileList: FileList | null) => {
       if (!fileList || fileList.length === 0) return;
+      const allFiles = Array.from(fileList);
+      // `multiple` on the <input> only governs the picker — a drag-drop bypasses
+      // it entirely and hands over every dropped file. Enforce the limit here too,
+      // for both entry points, rather than silently discarding extras.
+      const files = multiple ? allFiles : allFiles.slice(0, 1);
       const accepted: AcceptedPdf[] = [];
       const rejected: string[] = [];
-      const oversized: string[] = [];
+      const oversized: string[] =
+        !multiple && allFiles.length > 1
+          ? ["Only the first file was used — this tool takes one PDF at a time."]
+          : [];
 
-      for (const file of Array.from(fileList)) {
+      for (const file of files) {
         const bytes = new Uint8Array(await file.arrayBuffer());
         // Extension and MIME type are user-controlled. Only the header is evidence.
         if (!isPdfBytes(bytes)) {
