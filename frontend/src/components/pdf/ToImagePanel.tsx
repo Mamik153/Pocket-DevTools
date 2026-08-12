@@ -3,7 +3,7 @@ import { Download, FileArchive, Loader2 } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { downloadBlob, renderPdfToImages, zipFiles, type RenderedPage } from "@/lib/pdf";
+import { downloadBlob, inspectPdf, renderPdfToImages, zipFiles, type RenderedPage } from "@/lib/pdf";
 
 const DPI_PRESETS = [
   { dpi: 72, label: "72 DPI (screen)" },
@@ -26,12 +26,39 @@ export function ToImagePanel() {
   // Object URLs are not garbage collected. Revoke them when they are replaced.
   useEffect(() => () => pages.forEach((page) => URL.revokeObjectURL(page.url)), [pages]);
 
+  // PdfToolkit unmounts this panel on every tab switch, including mid-render.
+  // That is not covered by the [pages] cleanup above: `pages` is still empty
+  // when the switch happens, and the render that resolves after unmount would
+  // otherwise setPages() on nothing and leak every object URL it created.
+  // Unmount is a supersession: bump the generation so the in-flight render
+  // takes the already-superseded branch below and revokes its own urls.
+  useEffect(() => () => { requestIdRef.current += 1; }, []);
+
   const render = useCallback(
     async (target: AcceptedPdf) => {
       const requestId = ++requestIdRef.current;
       setFailure(null);
       setPages([]);
       setProgress({ done: 0, total: 0 });
+
+      // Detect a locked file up front rather than guessing from a caught render
+      // failure — that catch-all also fires for corrupt files, OOM, and decode
+      // failures, where "unlock it first" is actively misleading advice.
+      try {
+        const info = await inspectPdf(target.bytes);
+        if (requestId !== requestIdRef.current) return;
+        if (info.isEncrypted) {
+          setFailure("This PDF is locked. Unlock it in the Unlock tab first.");
+          setProgress(null);
+          return;
+        }
+      } catch {
+        if (requestId !== requestIdRef.current) return;
+        setFailure("This PDF could not be read. It may be corrupt or unreadable.");
+        setProgress(null);
+        return;
+      }
+
       try {
         const rendered = await renderPdfToImages(target.bytes, {
           dpi,
@@ -51,7 +78,7 @@ export function ToImagePanel() {
         setPages(rendered);
       } catch {
         if (requestId !== requestIdRef.current) return;
-        setFailure("This PDF could not be rendered. If it is locked, unlock it first.");
+        setFailure("This PDF could not be rendered. It may be corrupt or unreadable.");
       } finally {
         if (requestId === requestIdRef.current) setProgress(null);
       }
