@@ -13,28 +13,30 @@ export function AppLayout() {
   const isHomeRoute = location.pathname === "/";
 
   return (
-    <div className="relative h-screen bg-card text-foreground overflow-hidden p-3">
+    <div className="relative h-screen bg-background text-foreground overflow-hidden p-2 md:p-3">
       <SeoManager />
-      <div className="pointer-events-none absolute -left-24 -top-24 h-96 w-96 rounded-full bg-cyan-300/20 blur-3xl animate-drift" />
-      <div className="pointer-events-none absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-orange-300/20 blur-3xl animate-drift" />
+      {/* Ambient background glow mesh */}
+      <div className="pointer-events-none absolute -left-28 -top-28 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl animate-drift" />
+      <div className="pointer-events-none absolute -right-28 -bottom-28 h-96 w-96 rounded-full bg-orange-400/15 blur-3xl animate-drift" />
+      <div className="pointer-events-none absolute left-1/3 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-purple-400/10 blur-3xl" />
 
-      <div className="relative z-10 mx-auto flex min-h-screen w-full flex-col px-4 pb-8 pt-4 md:px-0 bg-background md:pt-0">
+      <div className="relative z-10 mx-auto flex h-full w-full flex-col px-1 pt-1 md:px-0 bg-transparent">
         <main
           className={cn(
-            "flex-1 mx-auto w-full border rounded-3xl relative",
+            "flex-1 mx-auto w-full border border-border/70 rounded-3xl relative bg-card/65 backdrop-blur-md shadow-glass",
             isHomeRoute ? "overflow-visible" : "overflow-y-auto hide-scrollbar",
           )}
         >
           <Outlet />
         </main>
 
-        <footer className="mt-2 text-center text-xs text-muted-foreground">
-          Made with care by{" "}
+        <footer className="py-2 text-center text-xs text-muted-foreground">
+          Pocket DevTools • Made with care by{" "}
           <a
             href="https://www.slickspender.com/"
             target="_blank"
             rel="noreferrer noopener"
-            className="underline-offset-2 hover:underline"
+            className="underline-offset-2 hover:underline hover:text-primary font-medium"
           >
             SlickSpender
           </a>
