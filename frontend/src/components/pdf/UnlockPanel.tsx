@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from "react";
-import { Download, Loader2, LockOpen } from "lucide-react";
+import { Download, Loader2, LockOpen, ShieldCheck } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,7 +29,7 @@ const isPasswordError = (error: unknown): boolean =>
 
 export function UnlockPanel() {
   const [file, setFile] = useState<AcceptedPdf | null>(null);
-  // The password lives only in component state. Switching tabs unmounts this
+  // The password lives only in component state. Leaving this tool unmounts the
   // panel, which discards the state along with it — nothing is persisted or logged.
   const [password, setPassword] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
@@ -83,12 +83,23 @@ export function UnlockPanel() {
 
   return (
     <div className="space-y-4">
-      <PdfDropzone label="Drop a locked PDF here, or click to choose" onAccept={(files) => void onAccept(files)} />
+      <div className="space-y-2 rounded-xl border border-border bg-card px-4 py-3">
+        <p className="flex items-start gap-2 text-sm font-medium">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
+          <span>Your PDF and your password never leave this browser.</span>
+        </p>
+        <p className="text-sm text-muted-foreground">
+          Unlocking happens entirely on your own device. Nothing is uploaded to a server,
+          nothing is stored, and the password you type is never saved or logged — it is held
+          in memory only while this tool is open and discarded the moment you leave it.
+        </p>
+        <p className="text-sm text-muted-foreground">
+          This works on PDFs you can already open, and on password-protected PDFs when you
+          know the password. It cannot guess or crack a password.
+        </p>
+      </div>
 
-      <p className="text-xs text-muted-foreground">
-        Works on PDFs you can already open, and on password-protected PDFs when you
-        enter the password. It does not guess or crack passwords.
-      </p>
+      <PdfDropzone label="Drop a locked PDF here, or click to choose" onAccept={(files) => void onAccept(files)} />
 
       {status.kind === "working" && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">

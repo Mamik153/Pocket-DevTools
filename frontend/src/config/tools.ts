@@ -12,7 +12,8 @@ export type ToolId =
   | "base64"
   | "regex-tester"
   | "timestamp-converter"
-  | "pdf-toolkit";
+  | "pdf-toolkit"
+  | "downloader";
 
 export type ToolPath =
   | "/markdown-to-pdf"
@@ -28,7 +29,8 @@ export type ToolPath =
   | "/base64"
   | "/regex-tester"
   | "/timestamp-converter"
-  | "/pdf-toolkit";
+  | "/pdf-toolkit"
+  | "/downloader";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -61,6 +63,23 @@ export const tools: ToolDefinition[] = [
     ctaLabel: "Open",
     metaDescription: "Merge, unlock, compress PDFs and convert them to images in your browser. Nothing is uploaded.",
     metaKeywords: ["merge pdf", "unlock pdf", "compress pdf", "pdf to image", "pdf tools", "remove pdf password"],
+  },
+  {
+    id: "downloader",
+    name: "Downloader",
+    description: "Grab a public video, track, or gallery from a link. A self-hosted fork of cobalt.",
+    path: "/downloader",
+    ctaLabel: "Open",
+    metaDescription:
+      "Download public videos, audio, and galleries from a link. Self-hosted fork of cobalt, no ads and no tracking.",
+    metaKeywords: [
+      "video downloader",
+      "media downloader",
+      "cobalt",
+      "cobalt fork",
+      "download video",
+      "download audio",
+    ],
   },
   {
     id: "json-beautifier",

@@ -30,10 +30,18 @@ Out of scope:
 
 ## Decisions
 
-### Routing: one route, tabs inside
+### Routing: one route, four tools inside
 
-A single route `/pdf-toolkit` renders one page with four tabs. This yields one
-sitemap entry and one keyword-targeted landing page rather than four.
+A single route `/pdf-toolkit` hosts all four tools. This yields one sitemap entry
+and one keyword-targeted landing page rather than four.
+
+> **Superseded after implementation.** This section originally specified a tab bar,
+> and the feature shipped that way. It was later replaced by a card-grid launcher:
+> the page opens on a grid describing the four tools, picking one replaces the grid
+> with that tool, and an "All PDF tools" button returns. There is no tab bar. The
+> load-bearing property is unchanged — leaving a tool unmounts its panel, which is
+> what revokes object URLs, supersedes in-flight renders, and discards the typed
+> password. See §Interaction design for the amended note.
 
 Registration touches the same four places every existing tool does:
 
@@ -182,10 +190,13 @@ with `aria-label`s. This is the accessibility floor, not an enhancement.
 Dragging still tracks 1:1. Reduced motion means no vestibular motion, not no
 feedback (§14).
 
-**Tabs.** A `motion.div` with `layoutId` sits behind the active tab button so the
-indicator physically travels between tabs (§7). Panel content cross-fades rather
-than slides: Merge and Unlock have no spatial relationship, and a slide would
-imply one that does not exist.
+**Tool switching.** *Superseded.* This originally specified a `motion.div` with
+`layoutId` travelling behind the active tab. The shipped UI is a card-grid launcher
+with no tab bar, and the swap between launcher and tool is not animated at all —
+deliberately. An `AnimatePresence` exit animation would hold the outgoing panel
+mounted past the state change, and unmount is precisely what revokes object URLs,
+supersedes in-flight renders, and discards the typed password. The cross-fade is
+not worth reopening that.
 
 **Dropzone.** Highlights on `dragenter` and stays continuously responsive while a
 file is held over it (§1), rather than reacting only on drop. Accepted files

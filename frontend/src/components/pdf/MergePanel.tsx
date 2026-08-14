@@ -1,7 +1,8 @@
 import { useCallback, useState } from "react";
-import { Reorder, useDragControls, useReducedMotion } from "framer-motion";
-import { ArrowDown, ArrowUp, Download, GripVertical, Loader2, X } from "lucide-react";
+import { Reorder } from "framer-motion";
+import { Download, Loader2 } from "lucide-react";
 import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { ReorderableRow } from "@/components/pdf/ReorderableRow";
 import { Button } from "@/components/ui/button";
 import { downloadBytes, formatBytes, inspectPdf, mergePdfs, moveItem } from "@/lib/pdf";
 
@@ -31,7 +32,7 @@ export function MergePanel() {
       try {
         const info = await inspectPdf(row.bytes);
         patch = info.isEncrypted
-          ? { error: "Locked. Unlock it in the Unlock tab first." }
+          ? { error: "Locked. Unlock it in the Unlock tool first." }
           : { pageCount: info.pageCount };
       } catch {
         patch = { error: "Could not be read. It may be corrupt." };
@@ -79,9 +80,12 @@ export function MergePanel() {
       {rows.length > 0 && (
         <Reorder.Group axis="y" values={rows} onReorder={setRows} className="space-y-2">
           {rows.map((row) => (
-            <MergeRowItem
+            <ReorderableRow
               key={row.id}
-              row={row}
+              value={row}
+              name={row.name}
+              error={row.error}
+              meta={`${formatBytes(row.size)}${row.pageCount === null ? "" : ` \u00b7 ${row.pageCount} page${row.pageCount === 1 ? "" : "s"}`}`}
               index={rows.findIndex((item) => item.id === row.id)}
               total={rows.length}
               onMove={(from, to) => setRows((current) => moveItem(current, from, to))}
@@ -121,80 +125,3 @@ export function MergePanel() {
   );
 }
 
-interface MergeRowItemProps {
-  row: MergeRow;
-  index: number;
-  total: number;
-  onMove: (from: number, to: number) => void;
-  onRemove: () => void;
-}
-
-function MergeRowItem({ row, index, total, onMove, onRemove }: MergeRowItemProps) {
-  const controls = useDragControls();
-  const prefersReducedMotion = useReducedMotion();
-
-  return (
-    <Reorder.Item
-      value={row}
-      // Drag only from the grip, so the rest of the row stays clickable.
-      dragListener={false}
-      dragControls={controls}
-      // Bounce is earned here: a drag release carries real momentum.
-      transition={
-        prefersReducedMotion
-          ? { duration: 0 }
-          : { type: "spring", bounce: 0.2, duration: 0.4 }
-      }
-      // Own transition so the pick-up scale pop doesn't inherit the settle's
-      // bounce spring — bounce is earned only by the post-drop settle.
-      whileDrag={
-        prefersReducedMotion
-          ? undefined
-          : { scale: 1.02, zIndex: 1, transition: { duration: 0.15 } }
-      }
-      className="flex items-center gap-3 rounded-xl border border-border bg-card px-3 py-2 shadow-sm"
-    >
-      <button
-        type="button"
-        aria-label={`Reorder ${row.name}`}
-        // Lift on pointer-down, so the grab registers before any movement.
-        onPointerDown={(event) => controls.start(event)}
-        className="cursor-grab touch-none text-muted-foreground active:cursor-grabbing"
-      >
-        <GripVertical className="h-4 w-4" aria-hidden="true" />
-      </button>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{row.name}</p>
-        <p className="text-xs text-muted-foreground tabular-nums">
-          {row.error
-            ? row.error
-            : `${formatBytes(row.size)}${row.pageCount === null ? "" : ` · ${row.pageCount} page${row.pageCount === 1 ? "" : "s"}`}`}
-        </p>
-      </div>
-
-      {/* Reorder is pointer-only, so keyboard users get explicit controls. */}
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Move ${row.name} up`}
-        disabled={index === 0}
-        onClick={() => onMove(index, index - 1)}
-      >
-        <ArrowUp className="h-4 w-4" aria-hidden="true" />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Move ${row.name} down`}
-        disabled={index === total - 1}
-        onClick={() => onMove(index, index + 1)}
-      >
-        <ArrowDown className="h-4 w-4" aria-hidden="true" />
-      </Button>
-      <Button variant="ghost" size="icon" aria-label={`Remove ${row.name}`} onClick={onRemove}>
-        <X className="h-4 w-4" aria-hidden="true" />
-      </Button>
-    </Reorder.Item>
-  );
-}
