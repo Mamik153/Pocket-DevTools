@@ -434,7 +434,7 @@ export function MarkdownToPdfPage() {
           {/* h-[80dvh] is not redundant with the section: it is the definite height
               the inner overflow-y-auto scrolls against. Drop it and the row grows
               to fit content instead. */}
-          <Card className="flex h-full flex-col overflow-hidden h-[72dvh]">
+          <Card className="flex flex-col overflow-hidden h-[72dvh]">
             <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -463,7 +463,7 @@ export function MarkdownToPdfPage() {
                   setShareNotice(null);
                 }}
                 placeholder="Paste markdown..."
-                className="mt-1 min-h-[360px] flex-1 resize-y font-mono text-sm"
+                className="mt-1 min-h-90 flex-1 resize-y font-mono text-sm"
                 aria-label="Markdown input"
               />
 
@@ -552,7 +552,7 @@ export function MarkdownToPdfPage() {
             isPreviewOnly ? "lg:col-span-12" : "hidden lg:block lg:col-span-7"
           }
         >
-          <Card className="flex h-full flex-col overflow-hidden h-[72dvh]">
+          <Card className="flex flex-col overflow-hidden h-[72dvh]">
             <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
