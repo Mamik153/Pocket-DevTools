@@ -352,7 +352,7 @@ export function FloatingWidgets() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -8 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="pointer-events-auto inline-flex max-w-full items-center gap-3 rounded-full border border-cyan-600/25 bg-gradient-to-r from-card via-card to-cyan-100/60 px-3 py-2 shadow-lg shadow-cyan-900/10 backdrop-blur-sm"
+            className="pointer-events-auto inline-flex max-w-full items-center gap-3 rounded-full border border-blue-600/25 bg-gradient-to-r from-card via-card to-blue-100/60 px-3 py-2 shadow-lg shadow-blue-900/10 backdrop-blur-sm"
           >
             <p className="truncate text-xs">
               <span className="font-semibold">FX:</span>{" "}
@@ -381,7 +381,7 @@ export function FloatingWidgets() {
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="w-full"
           >
-            <Card className="pointer-events-auto w-full border-cyan-700/20 bg-gradient-to-br from-card via-card to-cyan-100/50 shadow-lg shadow-cyan-900/10">
+            <Card className="pointer-events-auto w-full border-blue-700/20 bg-gradient-to-br from-card via-card to-blue-100/50 shadow-lg shadow-blue-900/10">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -402,7 +402,7 @@ export function FloatingWidgets() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-2">
-                <div className="rounded-lg border border-cyan-700/20 bg-background/60 p-2.5">
+                <div className="rounded-lg border border-blue-700/20 bg-background/60 p-2.5">
                   <div className="space-y-1">
                     <label
                       htmlFor="currency-select"
@@ -543,7 +543,7 @@ export function FloatingWidgets() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -8 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="pointer-events-auto inline-flex max-w-full items-center gap-3 rounded-full border border-orange-600/25 bg-gradient-to-r from-card via-card to-orange-100/65 px-3 py-2 shadow-lg shadow-orange-900/10 backdrop-blur-sm"
+            className="pointer-events-auto inline-flex max-w-full items-center gap-3 rounded-full border border-violet-600/25 bg-gradient-to-r from-card via-card to-violet-100/65 px-3 py-2 shadow-lg shadow-violet-900/10 backdrop-blur-sm"
           >
             <p className="truncate text-xs">
               <span className="font-semibold">Clock:</span>{" "}
@@ -569,7 +569,7 @@ export function FloatingWidgets() {
             transition={{ duration: 0.22, ease: "easeOut" }}
             className="w-full"
           >
-            <Card className="pointer-events-auto w-full border-orange-700/20 bg-gradient-to-br from-card via-card to-orange-100/55 shadow-lg shadow-orange-900/10">
+            <Card className="pointer-events-auto w-full border-violet-700/20 bg-gradient-to-br from-card via-card to-violet-100/55 shadow-lg shadow-violet-900/10">
               <CardHeader className="space-y-0 pb-3">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
@@ -610,7 +610,7 @@ export function FloatingWidgets() {
                     >
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">{zone.label}</p>
-                        <RelativeTimeZoneLabel className="h-5 rounded-sm border border-orange-600/20 bg-orange-100/70 px-1.5 text-[10px] text-orange-900">
+                        <RelativeTimeZoneLabel className="h-5 rounded-sm border border-violet-600/20 bg-violet-100/70 px-1.5 text-[10px] text-violet-900">
                           {zone.code}
                         </RelativeTimeZoneLabel>
                       </div>

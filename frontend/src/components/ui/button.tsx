@@ -14,7 +14,7 @@ const buttonVariants = cva(
         ghost: "hover:bg-secondary/50 hover:text-foreground",
         outline: "border border-border/80 bg-background/50 hover:bg-secondary/40 hover:border-primary/40",
         gradient:
-          "bg-gradient-to-r from-primary via-teal-600 to-accent text-primary-foreground shadow-md hover:opacity-95 hover:shadow-glow",
+          "bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-primary-foreground shadow-md hover:opacity-95 hover:shadow-glow",
         glass:
           "bg-card/60 backdrop-blur-md border border-border/60 text-foreground hover:bg-card/90 hover:border-primary/30",
       },

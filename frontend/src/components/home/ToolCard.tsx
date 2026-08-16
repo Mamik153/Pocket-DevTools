@@ -30,7 +30,6 @@ export function ToolCard({ tool, icon: Icon, index = 0 }: ToolCardProps) {
         damping: 24,
         delay: Math.min(index * 0.04, 0.3),
       }}
-      whileHover={{ y: -4, scale: 1.01 }}
       className="h-full"
     >
       <Card className="group relative flex h-full flex-col overflow-hidden border-border/70 bg-card/85 hover:border-primary/40 hover:shadow-card-hover">
@@ -39,7 +38,7 @@ export function ToolCard({ tool, icon: Icon, index = 0 }: ToolCardProps) {
 
         <CardHeader className="p-5 pb-3">
           <div className="flex items-start justify-between gap-3 mb-1">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 via-teal-500/10 to-orange-500/10 text-primary border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary/15 via-blue-500/10 to-violet-500/10 text-primary border border-primary/20 shadow-xs transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </div>
           </div>

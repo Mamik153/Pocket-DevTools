@@ -230,7 +230,7 @@ export function HomePage() {
         <div className="space-y-4 max-w-7xl w-full mx-auto">
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 dark:text-slate-500" />
               <input
                 type="text"
                 placeholder="Search tools (e.g. PDF, JSON, Password)..."

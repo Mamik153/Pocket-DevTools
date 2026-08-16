@@ -62,7 +62,7 @@ export function MarkdownPreview({ markdown }: MarkdownPreviewProps) {
   }, []);
 
   return (
-    <div className="markdown-viewer prose prose-stone max-w-none prose-headings:font-semibold prose-a:text-teal-700">
+    <div className="markdown-viewer prose prose-stone max-w-none prose-headings:font-semibold prose-a:text-primary hover:prose-a:text-accent">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         // plainText keeps these as text nodes so String(children) can read the
