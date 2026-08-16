@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildIco,
   dedupeNames,
   fitWithin,
   isConvertibleImage,
@@ -189,5 +190,78 @@ describe("dedupeNames", () => {
       "report.tar.gz",
       "report.tar-2.gz",
     ]);
+  });
+});
+
+/** Reads back what buildIco wrote, so the test asserts the real byte layout. */
+const parseIco = (bytes: Uint8Array) => {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const count = view.getUint16(4, true);
+  const entries = [];
+  for (let index = 0; index < count; index += 1) {
+    const at = 6 + index * 16;
+    entries.push({
+      width: bytes[at],
+      height: bytes[at + 1],
+      planes: view.getUint16(at + 4, true),
+      bitCount: view.getUint16(at + 6, true),
+      byteLength: view.getUint32(at + 8, true),
+      offset: view.getUint32(at + 12, true),
+    });
+  }
+  return { reserved: view.getUint16(0, true), type: view.getUint16(2, true), count, entries };
+};
+
+describe("buildIco", () => {
+  const small = new Uint8Array(10).fill(0xaa);
+  const large = new Uint8Array(20).fill(0xbb);
+  const ico = buildIco([
+    { size: 16, png: small },
+    { size: 256, png: large },
+  ]);
+  const parsed = parseIco(ico);
+
+  it("writes a well-formed ICONDIR", () => {
+    expect(parsed.reserved).toBe(0);
+    expect(parsed.type).toBe(1);
+    expect(parsed.count).toBe(2);
+  });
+
+  it("sizes the file as header plus directory plus payloads", () => {
+    expect(ico.length).toBe(6 + 16 * 2 + 10 + 20);
+  });
+
+  it("records each entry's dimensions", () => {
+    expect(parsed.entries[0].width).toBe(16);
+    expect(parsed.entries[0].height).toBe(16);
+  });
+
+  // 256 does not fit in a byte. The format spells it 0, and readers that get
+  // this wrong render a 256px icon as a broken 0px one.
+  it("spells 256 as a zero byte", () => {
+    expect(parsed.entries[1].width).toBe(0);
+    expect(parsed.entries[1].height).toBe(0);
+  });
+
+  it("declares 32-bit truecolour with one plane", () => {
+    expect(parsed.entries[0].planes).toBe(1);
+    expect(parsed.entries[0].bitCount).toBe(32);
+  });
+
+  it("points each entry at its own payload", () => {
+    expect(parsed.entries[0].offset).toBe(6 + 16 * 2);
+    expect(parsed.entries[0].byteLength).toBe(10);
+    expect(parsed.entries[1].offset).toBe(6 + 16 * 2 + 10);
+    expect(parsed.entries[1].byteLength).toBe(20);
+  });
+
+  it("round-trips each payload byte for byte", () => {
+    const [first, second] = parsed.entries;
+    expect(ico.slice(first.offset, first.offset + first.byteLength)).toEqual(small);
+    expect(ico.slice(second.offset, second.offset + second.byteLength)).toEqual(large);
+  });
+
+  it("refuses to build an empty icon", () => {
+    expect(() => buildIco([])).toThrow(/at least one/i);
   });
 });

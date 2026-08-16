@@ -154,3 +154,56 @@ export const dedupeNames = (names: readonly string[]): string[] => {
     return `${stem}-${used + 1}${extension}`;
   });
 };
+
+export interface IcoEntry {
+  /** Square edge length in pixels, 1-256. */
+  size: number;
+  png: Uint8Array;
+}
+
+/** Offerable ICO sizes, and the subset ticked by default. */
+export const ICO_SIZES = [16, 32, 48, 64, 128, 256] as const;
+export const DEFAULT_ICO_SIZES = [16, 32, 48, 256] as const;
+
+const ICONDIR_BYTES = 6;
+const ICONDIRENTRY_BYTES = 16;
+
+/**
+ * Assemble an .ico from PNG payloads. PNG-compressed entries are what real
+ * favicon generators emit and what every current reader supports, so there is
+ * no BMP/DIB path here.
+ *
+ * Layout: ICONDIR, then one ICONDIRENTRY per image, then the payloads. Every
+ * multi-byte field is little-endian.
+ */
+export const buildIco = (entries: readonly IcoEntry[]): Uint8Array => {
+  if (entries.length === 0) throw new Error("An ICO needs at least one image.");
+
+  const headerBytes = ICONDIR_BYTES + ICONDIRENTRY_BYTES * entries.length;
+  const totalBytes = entries.reduce((sum, entry) => sum + entry.png.length, headerBytes);
+  const out = new Uint8Array(totalBytes);
+  const view = new DataView(out.buffer);
+
+  view.setUint16(0, 0, true); // reserved
+  view.setUint16(2, 1, true); // 1 = icon (2 would be a cursor)
+  view.setUint16(4, entries.length, true);
+
+  let offset = headerBytes;
+  entries.forEach((entry, index) => {
+    const at = ICONDIR_BYTES + index * ICONDIRENTRY_BYTES;
+    // 256 does not fit in a byte; the format spells it 0.
+    const dimension = entry.size >= 256 ? 0 : entry.size;
+    out[at] = dimension;
+    out[at + 1] = dimension;
+    out[at + 2] = 0; // palette entries, 0 for truecolour
+    out[at + 3] = 0; // reserved
+    view.setUint16(at + 4, 1, true); // colour planes
+    view.setUint16(at + 6, 32, true); // bits per pixel
+    view.setUint32(at + 8, entry.png.length, true);
+    view.setUint32(at + 12, offset, true);
+    out.set(entry.png, offset);
+    offset += entry.png.length;
+  });
+
+  return out;
+};
