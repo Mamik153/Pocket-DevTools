@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
-import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -30,7 +30,7 @@ interface Result {
 }
 
 export function CompressPanel() {
-  const [file, setFile] = useState<AcceptedPdf | null>(null);
+  const [file, setFile] = useState<AcceptedFile | null>(null);
   const [aggressive, setAggressive] = useState(false);
   const [dpi, setDpi] = useState(150);
   const [quality, setQuality] = useState(0.7);
@@ -43,7 +43,7 @@ export function CompressPanel() {
   const requestIdRef = useRef(0);
 
   const run = useCallback(
-    async (target: AcceptedPdf) => {
+    async (target: AcceptedFile) => {
       const requestId = ++requestIdRef.current;
       const usedAggressive = aggressive;
       setFailure(null);
@@ -96,7 +96,7 @@ export function CompressPanel() {
 
   return (
     <div className="space-y-4">
-      <PdfDropzone
+      <FileDropzone
         label="Drop a PDF here, or click to choose"
         onAccept={([accepted]) => {
           setFile(accepted);

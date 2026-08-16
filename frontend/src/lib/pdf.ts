@@ -4,6 +4,8 @@
  * initial bundle. Nothing here performs network I/O — all work is local.
  */
 
+import { sniffImageFormat } from "@/lib/image";
+
 /** A PDF must start with "%PDF-". Extension and MIME type are attacker-controlled. */
 export const isPdfBytes = (bytes: Uint8Array): boolean => {
   const header = "%PDF-";
@@ -316,33 +318,6 @@ export const compressAggressive = async (
   }
 };
 
-/** Image formats we accept. "other" is anything the browser can decode but pdf-lib cannot embed. */
-export type ImageKind = "jpeg" | "png" | "other";
-
-const startsWith = (bytes: Uint8Array, signature: readonly number[], offset = 0) =>
-  bytes.length >= offset + signature.length &&
-  signature.every((byte, index) => bytes[offset + index] === byte);
-
-/**
- * Sniff an image by magic bytes. Extension and MIME type are user-controlled;
- * only the header is evidence. Returns null if it is not an image we accept.
- *
- * pdf-lib can embed JPEG and PNG directly. Everything else has to be re-encoded
- * through a canvas first, so the kind is part of the return value.
- */
-export const sniffImageType = (bytes: Uint8Array): ImageKind | null => {
-  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
-  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])) return "png";
-  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "other"; // GIF8
-  if (startsWith(bytes, [0x42, 0x4d])) return "other"; // BM
-  // RIFF....WEBP
-  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8))
-    return "other";
-  return null;
-};
-
-export const isImageBytes = (bytes: Uint8Array): boolean => sniffImageType(bytes) !== null;
-
 /**
  * Browsers report image pixels at 96 DPI; a PDF point is 1/72 inch. Converting
  * keeps a 96 DPI screen image the same physical size on the page.
@@ -365,13 +340,13 @@ export const imagesToPdf = async (
 
   for (let index = 0; index < images.length; index += 1) {
     const source = images[index];
-    const kind = sniffImageType(source);
+    const format = sniffImageFormat(source);
     // Anything pdf-lib cannot embed goes through the browser's own decoder and
-    // comes back out as JPEG. That covers GIF, BMP, WebP and friends.
+    // comes back out as JPEG. That covers GIF, BMP, WebP and AVIF.
     const embedded =
-      kind === "png"
+      format === "png"
         ? await out.embedPng(source)
-        : await out.embedJpg(kind === "jpeg" ? source : await reencodeToJpeg(source));
+        : await out.embedJpg(format === "jpeg" ? source : await reencodeToJpeg(source));
 
     const width = pxToPoints(embedded.width);
     const height = pxToPoints(embedded.height);

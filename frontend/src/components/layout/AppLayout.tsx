@@ -16,9 +16,9 @@ export function AppLayout() {
     <div className="relative h-screen bg-background text-foreground overflow-hidden p-2 md:p-3">
       <SeoManager />
       {/* Ambient background glow mesh */}
-      <div className="pointer-events-none absolute -left-28 -top-28 h-96 w-96 rounded-full bg-cyan-400/15 blur-3xl animate-drift" />
-      <div className="pointer-events-none absolute -right-28 -bottom-28 h-96 w-96 rounded-full bg-orange-400/15 blur-3xl animate-drift" />
-      <div className="pointer-events-none absolute left-1/3 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-purple-400/10 blur-3xl" />
+      <div className="pointer-events-none absolute -left-28 -top-28 h-96 w-96 rounded-full bg-sky-400/15 blur-3xl animate-drift" />
+      <div className="pointer-events-none absolute -right-28 -bottom-28 h-96 w-96 rounded-full bg-violet-500/15 blur-3xl animate-drift" />
+      <div className="pointer-events-none absolute left-1/3 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full bg-indigo-400/10 blur-3xl" />
 
       <div className="relative z-10 mx-auto flex h-full w-full flex-col px-1 pt-1 md:px-0 bg-transparent">
         <main

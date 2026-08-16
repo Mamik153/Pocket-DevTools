@@ -1,13 +1,13 @@
 import { useCallback, useRef, useState } from "react";
 import { Reorder } from "framer-motion";
 import { Download, Loader2 } from "lucide-react";
-import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
 import { ReorderableRow } from "@/components/pdf/ReorderableRow";
 import { Button } from "@/components/ui/button";
 import { downloadBytes, formatBytes, imagesToPdf, moveItem } from "@/lib/pdf";
 
 export function ImageToPdfPanel() {
-  const [rows, setRows] = useState<AcceptedPdf[]>([]);
+  const [rows, setRows] = useState<AcceptedFile[]>([]);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
   // Generation counter: guards against a superseded export resolving after a
@@ -16,7 +16,7 @@ export function ImageToPdfPanel() {
 
   // The dropzone already sniffed every file's header, so nothing needs
   // inspecting here — unlike Merge, where each PDF must be probed for encryption.
-  const addFiles = useCallback((files: AcceptedPdf[]) => {
+  const addFiles = useCallback((files: AcceptedFile[]) => {
     setRows((current) => [...current, ...files]);
   }, []);
 
@@ -44,7 +44,7 @@ export function ImageToPdfPanel() {
 
   return (
     <div className="space-y-4">
-      <PdfDropzone
+      <FileDropzone
         kind="image"
         multiple
         label={

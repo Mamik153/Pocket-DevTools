@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, FileArchive, Loader2 } from "lucide-react";
-import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,7 +19,7 @@ const DPI_PRESETS = [
 ];
 
 export function ToImagePanel() {
-  const [file, setFile] = useState<AcceptedPdf | null>(null);
+  const [file, setFile] = useState<AcceptedFile | null>(null);
   const [format, setFormat] = useState<"png" | "jpeg">("png");
   const [dpi, setDpi] = useState(150);
   const [quality, setQuality] = useState(0.85);
@@ -42,7 +42,7 @@ export function ToImagePanel() {
   useEffect(() => () => { requestIdRef.current += 1; }, []);
 
   const render = useCallback(
-    async (target: AcceptedPdf) => {
+    async (target: AcceptedFile) => {
       const requestId = ++requestIdRef.current;
       setFailure(null);
       setPages([]);
@@ -103,7 +103,7 @@ export function ToImagePanel() {
 
   return (
     <div className="space-y-4">
-      <PdfDropzone
+      <FileDropzone
         label="Drop a PDF here, or click to choose"
         onAccept={([accepted]) => {
           setFile(accepted);

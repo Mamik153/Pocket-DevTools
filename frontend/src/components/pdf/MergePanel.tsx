@@ -1,12 +1,12 @@
 import { useCallback, useState } from "react";
 import { Reorder } from "framer-motion";
 import { Download, Loader2 } from "lucide-react";
-import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
 import { ReorderableRow } from "@/components/pdf/ReorderableRow";
 import { Button } from "@/components/ui/button";
 import { downloadBytes, formatBytes, inspectPdf, mergePdfs, moveItem } from "@/lib/pdf";
 
-interface MergeRow extends AcceptedPdf {
+interface MergeRow extends AcceptedFile {
   pageCount: number | null;
   error: string | null;
 }
@@ -16,8 +16,8 @@ export function MergePanel() {
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const addFiles = useCallback(async (files: AcceptedPdf[]) => {
-    // PdfDropzone already assigns a collision-free id, so do not override it here.
+  const addFiles = useCallback(async (files: AcceptedFile[]) => {
+    // FileDropzone already assigns a collision-free id, so do not override it here.
     const pending: MergeRow[] = files.map((file) => ({
       ...file,
       pageCount: null,
@@ -67,7 +67,7 @@ export function MergePanel() {
 
   return (
     <div className="space-y-4">
-      <PdfDropzone
+      <FileDropzone
         multiple
         label={
           rows.length === 0
