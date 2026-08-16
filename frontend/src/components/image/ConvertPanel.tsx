@@ -103,7 +103,17 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
   const converted = rows.filter((row) => row.output);
   const hasSvg = rows.some((row) => sniffImageFormat(row.bytes) === "svg");
 
+  // Every row has finished, one way or the other.
+  const settled = rows.length > 0 && rows.every((row) => row.output || row.error);
+  const canDownload = settled && converted.length > 0 && progress === null;
+
   const onDownloadAll = async () => {
+    // Zipping a single file just makes the user unzip it again.
+    if (converted.length === 1) {
+      const [only] = converted;
+      downloadBlob(only.output as Blob, outputName(only.name, target));
+      return;
+    }
     const names = dedupeNames(converted.map((row) => outputName(row.name, target)));
     const zip = await zipFiles(
       converted.map((row, index) => ({ name: names[index], blob: row.output as Blob })),
@@ -159,12 +169,12 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
               </span>
               {row.output && (
                 <Button
-                  variant="ghost"
+                  variant="secondary"
                   size="sm"
                   onClick={() => downloadBlob(row.output as Blob, outputName(row.name, target))}
                 >
                   <Download className="h-4 w-4" aria-hidden="true" />
-                  Save
+                  {outputName(row.name, target).split(".").pop()?.toUpperCase()}
                 </Button>
               )}
               <button
@@ -187,22 +197,22 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
               ? `Converting ${progress.done} of ${progress.total}`
               : `${converted.length} of ${rows.length} converted`}
           </p>
-          <div className="flex gap-2">
+          {/*
+            Once every row has settled, downloading is the only thing left to do:
+            changing an option re-runs the batch by itself, so a lingering
+            Convert button would be a no-op sitting in the primary slot.
+          */}
+          {canDownload ? (
+            <Button onClick={() => void onDownloadAll()}>
+              <Download className="h-4 w-4" aria-hidden="true" />
+              {converted.length > 1 ? `Download all (${converted.length}) as ZIP` : "Download"}
+            </Button>
+          ) : (
             <Button onClick={() => void run(rows, settings)} disabled={progress !== null}>
               {progress ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
               Convert
             </Button>
-            {converted.length > 1 && (
-              <Button
-                variant="secondary"
-                onClick={() => void onDownloadAll()}
-                disabled={progress !== null}
-              >
-                <Download className="h-4 w-4" aria-hidden="true" />
-                ZIP
-              </Button>
-            )}
-          </div>
+          )}
         </div>
       )}
     </div>

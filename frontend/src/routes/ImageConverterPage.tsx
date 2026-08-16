@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { Link } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, FileImage, Image as ImageIcon, ShieldCheck, Star } from "lucide-react";
+import { ChevronRight, FileImage, Image as ImageIcon, ShieldCheck, Star } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ToolPageLayout } from "@/components/layout/ToolPageLayout";
 import { ConvertPanel } from "@/components/image/ConvertPanel";
@@ -118,13 +118,7 @@ function ImageConvertRoute({ mode }: { mode: ImageMode }) {
     >
       <div className="space-y-5">
         <PrivacyNote />
-        <Link
-          to="/image-converter"
-          className="inline-flex items-center gap-1 text-sm font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <ChevronLeft className="h-4 w-4" aria-hidden="true" />
-          All image tools
-        </Link>
+        {/* No back link here — ToolPageLayout's own one already goes up a level. */}
         <h2 ref={headingRef} tabIndex={-1} className="text-lg font-semibold">
           {mode.label}
         </h2>
