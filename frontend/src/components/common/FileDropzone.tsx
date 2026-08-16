@@ -1,11 +1,11 @@
 import { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload } from "lucide-react";
-import { isEmbeddableImage } from "@/lib/image";
+import { isConvertibleImage, isEmbeddableImage } from "@/lib/image";
 import { formatBytes, isPdfBytes } from "@/lib/pdf";
 import { cn } from "@/lib/utils";
 
-export interface AcceptedPdf {
+export interface AcceptedFile {
   id: string;
   name: string;
   size: number;
@@ -15,25 +15,32 @@ export interface AcceptedPdf {
 /** Above this, a browser may run out of memory. We warn; we never block. */
 export const LARGE_FILE_WARNING_BYTES = 50 * 1024 * 1024;
 
-/** What this dropzone takes. Each kind supplies its own header check and copy. */
+/**
+ * What this dropzone takes. Each kind supplies its own header check and copy.
+ *
+ * "image" and "convertible" differ by exactly one format: SVG. The PDF toolkit
+ * rasterises through createImageBitmap, which rejects SVG blobs, so SVG must
+ * not reach it. The converter has an <img> path and accepts it.
+ */
 const KINDS = {
   pdf: { noun: "PDF", accept: "application/pdf,.pdf", sniff: isPdfBytes },
   image: { noun: "image", accept: "image/*", sniff: isEmbeddableImage },
+  convertible: { noun: "image", accept: "image/*,.svg", sniff: isConvertibleImage },
 } as const;
 
-interface PdfDropzoneProps {
+interface FileDropzoneProps {
   kind?: keyof typeof KINDS;
   multiple?: boolean;
   label?: string;
-  onAccept: (files: AcceptedPdf[]) => void;
+  onAccept: (files: AcceptedFile[]) => void;
 }
 
-export function PdfDropzone({
+export function FileDropzone({
   kind = "pdf",
   multiple = false,
   label = "Drop a PDF here, or click to choose",
   onAccept,
-}: PdfDropzoneProps) {
+}: FileDropzoneProps) {
   const { noun, accept, sniff } = KINDS[kind];
   const [isOver, setIsOver] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
@@ -49,7 +56,7 @@ export function PdfDropzone({
       // it entirely and hands over every dropped file. Enforce the limit here too,
       // for both entry points, rather than silently discarding extras.
       const files = multiple ? allFiles : allFiles.slice(0, 1);
-      const accepted: AcceptedPdf[] = [];
+      const accepted: AcceptedFile[] = [];
       const rejected: string[] = [];
       const oversized: string[] =
         !multiple && allFiles.length > 1

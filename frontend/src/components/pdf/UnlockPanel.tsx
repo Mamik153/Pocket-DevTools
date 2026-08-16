@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { Download, Loader2, LockOpen, ShieldCheck } from "lucide-react";
-import { PdfDropzone, type AcceptedPdf } from "@/components/pdf/PdfDropzone";
+import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +28,7 @@ const isPasswordError = (error: unknown): boolean =>
   (error.message.includes("NEEDS PASSWORD") || error.message.includes("Password incorrect"));
 
 export function UnlockPanel() {
-  const [file, setFile] = useState<AcceptedPdf | null>(null);
+  const [file, setFile] = useState<AcceptedFile | null>(null);
   // The password lives only in component state. Leaving this tool unmounts the
   // panel, which discards the state along with it — nothing is persisted or logged.
   const [password, setPassword] = useState("");
@@ -37,7 +37,7 @@ export function UnlockPanel() {
   // after a newer one and overwriting its result.
   const requestIdRef = useRef(0);
 
-  const attempt = useCallback(async (target: AcceptedPdf, candidate: string, requestId: number) => {
+  const attempt = useCallback(async (target: AcceptedFile, candidate: string, requestId: number) => {
     setStatus({ kind: "working" });
     try {
       const result = await decryptPdf(target.bytes, candidate);
@@ -58,7 +58,7 @@ export function UnlockPanel() {
   }, []);
 
   const onAccept = useCallback(
-    async ([accepted]: AcceptedPdf[]) => {
+    async ([accepted]: AcceptedFile[]) => {
       const requestId = ++requestIdRef.current;
       setFile(accepted);
       setPassword("");
@@ -99,7 +99,7 @@ export function UnlockPanel() {
         </p>
       </div>
 
-      <PdfDropzone label="Drop a locked PDF here, or click to choose" onAccept={(files) => void onAccept(files)} />
+      <FileDropzone label="Drop a locked PDF here, or click to choose" onAccept={(files) => void onAccept(files)} />
 
       {status.kind === "working" && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
