@@ -10,6 +10,9 @@ import {
   KeyRound,
   Link2,
   Link2Off,
+  Image as ImageIcon,
+  FileImage,
+  Star,
   ScanSearch,
   Search,
   Sparkles,
@@ -48,6 +51,13 @@ const toolIcons: Record<ToolId, LucideIcon> = {
   "timestamp-converter": Clock3,
   "pdf-toolkit": FileStack,
   downloader: Download,
+  "image-converter": ImageIcon,
+  // The four converter sub-routes are showOnHome: false, so these never render
+  // today. They exist because the map is keyed by every ToolId.
+  "image-to-jpeg": ImageIcon,
+  "image-to-png": FileImage,
+  "image-to-webp": ImageIcon,
+  "image-to-ico": Star,
 };
 
 type CategoryFilter = "all" | "pdf" | "json" | "ai" | "security" | "utils";
@@ -142,12 +152,12 @@ export function HomePage() {
             }`}
           >
             <motion.span
-              className="rounded-xl border border-primary/20 bg-primary/10 p-1"
+              className="rounded-xl border border-primary/20"
               animate={{ padding: isMinimized ? "3px" : "5px" }}
               transition={scrollTween}
             >
               <motion.img
-                src="/logo.jpeg"
+                src="/logo.png"
                 alt="Pocket DevTools logo"
                 width={36}
                 height={36}

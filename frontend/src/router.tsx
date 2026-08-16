@@ -1,4 +1,4 @@
-import { createRootRoute, createRoute, createRouter, redirect } from "@tanstack/react-router";
+import { createRootRoute, createRoute, createRouter, redirect, Outlet } from "@tanstack/react-router";
 import { lazy, Suspense } from "react";
 import type { ComponentType } from "react";
 import { AppLayout } from "@/components/layout/AppLayout";
@@ -18,6 +18,23 @@ const DownloaderPage = lazy(() =>
   import("@/routes/DownloaderPage").then((module) => ({
     default: module.DownloaderPage,
   })),
+);
+const ImageConverterIndex = lazy(() =>
+  import("@/routes/ImageConverterPage").then((module) => ({
+    default: module.ImageConverterIndex,
+  })),
+);
+const ToJpegPage = lazy(() =>
+  import("@/routes/ImageConverterPage").then((module) => ({ default: module.ToJpegPage })),
+);
+const ToPngPage = lazy(() =>
+  import("@/routes/ImageConverterPage").then((module) => ({ default: module.ToPngPage })),
+);
+const ToWebpPage = lazy(() =>
+  import("@/routes/ImageConverterPage").then((module) => ({ default: module.ToWebpPage })),
+);
+const ToIcoPage = lazy(() =>
+  import("@/routes/ImageConverterPage").then((module) => ({ default: module.ToIcoPage })),
 );
 const JsonBeautifierPage = lazy(() =>
   import("@/routes/JsonBeautifierPage").then((module) => ({
@@ -150,6 +167,45 @@ const downloaderRoute = createRoute({
   component: withLazySuspense(DownloaderPage)
 });
 
+// The four children are declared explicitly rather than generated from a
+// config array: TanStack infers <Link to=""> types from statically declared
+// routes, and a .map() widens them to string.
+const imageConverterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/image-converter",
+  component: Outlet
+});
+
+const imageConverterIndexRoute = createRoute({
+  getParentRoute: () => imageConverterRoute,
+  path: "/",
+  component: withLazySuspense(ImageConverterIndex)
+});
+
+const imageToJpegRoute = createRoute({
+  getParentRoute: () => imageConverterRoute,
+  path: "to-jpeg",
+  component: withLazySuspense(ToJpegPage)
+});
+
+const imageToPngRoute = createRoute({
+  getParentRoute: () => imageConverterRoute,
+  path: "to-png",
+  component: withLazySuspense(ToPngPage)
+});
+
+const imageToWebpRoute = createRoute({
+  getParentRoute: () => imageConverterRoute,
+  path: "to-webp",
+  component: withLazySuspense(ToWebpPage)
+});
+
+const imageToIcoRoute = createRoute({
+  getParentRoute: () => imageConverterRoute,
+  path: "to-ico",
+  component: withLazySuspense(ToIcoPage)
+});
+
 const jsonBeautifierRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/json-beautifier",
@@ -227,6 +283,13 @@ const routeTree = rootRoute.addChildren([
   markdownToPdfRoute,
   pdfToolkitRoute,
   downloaderRoute,
+  imageConverterRoute.addChildren([
+    imageConverterIndexRoute,
+    imageToJpegRoute,
+    imageToPngRoute,
+    imageToWebpRoute,
+    imageToIcoRoute
+  ]),
   legacyAudioscribeRoute,
   jsonBeautifierRoute,
   jsonToToonRoute,

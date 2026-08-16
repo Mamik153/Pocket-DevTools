@@ -13,7 +13,12 @@ export type ToolId =
   | "regex-tester"
   | "timestamp-converter"
   | "pdf-toolkit"
-  | "downloader";
+  | "downloader"
+  | "image-converter"
+  | "image-to-jpeg"
+  | "image-to-png"
+  | "image-to-webp"
+  | "image-to-ico";
 
 export type ToolPath =
   | "/markdown-to-pdf"
@@ -30,7 +35,12 @@ export type ToolPath =
   | "/regex-tester"
   | "/timestamp-converter"
   | "/pdf-toolkit"
-  | "/downloader";
+  | "/downloader"
+  | "/image-converter"
+  | "/image-converter/to-jpeg"
+  | "/image-converter/to-png"
+  | "/image-converter/to-webp"
+  | "/image-converter/to-ico";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -39,6 +49,8 @@ export interface ToolDefinition {
   path: ToolPath;
   ctaLabel: string;
   showOnHome?: boolean;
+  /** Sitemap weight. Defaults to 0.8 when omitted. */
+  sitemapPriority?: string;
   /** SEO: unique, benefit-led meta description (≤155 chars). Falls back to description + suffix if omitted. */
   metaDescription?: string;
   /** SEO: extra keywords for this tool. Merged with defaults. */
@@ -48,6 +60,7 @@ export interface ToolDefinition {
 export const tools: ToolDefinition[] = [
   {
     id: "markdown-to-pdf",
+    sitemapPriority: "0.9",
     name: "Markdown to PDF",
     description: "Write markdown, preview it live, and export a print-ready PDF.",
     path: "/markdown-to-pdf",
@@ -57,6 +70,7 @@ export const tools: ToolDefinition[] = [
   },
   {
     id: "pdf-toolkit",
+    sitemapPriority: "0.9",
     name: "PDF Toolkit",
     description: "Merge, unlock, compress, and convert PDFs to images without uploading a file.",
     path: "/pdf-toolkit",
@@ -103,6 +117,7 @@ export const tools: ToolDefinition[] = [
   },
   {
     id: "json-compare",
+    sitemapPriority: "0.85",
     name: "JSON Toolkit",
     description: "Compare, beautify, scaffold, and convert JSON with malformed-line debugging.",
     path: "/json-compare",
@@ -190,5 +205,60 @@ export const tools: ToolDefinition[] = [
     ctaLabel: "Open",
     metaDescription: "Convert Unix timestamps to dates and back. Epoch to human-readable, any timezone.",
     metaKeywords: ["timestamp converter", "epoch converter", "unix timestamp", "epoch to date"],
+  },
+  {
+    id: "image-converter",
+    name: "Image Converter",
+    description: "Convert images between JPEG, PNG, WebP and ICO without uploading a file.",
+    path: "/image-converter",
+    ctaLabel: "Open",
+    sitemapPriority: "0.9",
+    metaDescription:
+      "Convert images between JPEG, PNG, WebP and ICO in your browser. Batch convert, resize, and build multi-size favicons. Nothing is uploaded.",
+    metaKeywords: ["image converter", "png to jpg", "webp converter", "png to ico", "favicon generator"],
+  },
+  {
+    id: "image-to-jpeg",
+    name: "Convert Image to JPEG",
+    description: "Turn PNG, WebP, AVIF, GIF, BMP or SVG images into JPEG.",
+    path: "/image-converter/to-jpeg",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Convert PNG, WebP, AVIF, GIF, BMP and SVG to JPEG in your browser. Batch convert with quality and resize controls. No uploads.",
+    metaKeywords: ["png to jpg", "webp to jpg", "convert to jpeg", "image to jpg"],
+  },
+  {
+    id: "image-to-png",
+    name: "Convert Image to PNG",
+    description: "Turn JPEG, WebP, AVIF, GIF, BMP or SVG images into PNG.",
+    path: "/image-converter/to-png",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Convert JPEG, WebP, AVIF, GIF, BMP and SVG to PNG in your browser. Keeps transparency. Batch convert with no uploads.",
+    metaKeywords: ["jpg to png", "webp to png", "convert to png", "svg to png", "image to png"],
+  },
+  {
+    id: "image-to-webp",
+    name: "Convert Image to WebP",
+    description: "Turn JPEG, PNG, AVIF, GIF, BMP or SVG images into WebP.",
+    path: "/image-converter/to-webp",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Convert JPEG, PNG, AVIF, GIF, BMP and SVG to WebP in your browser. Smaller files for the web, with quality and resize controls.",
+    metaKeywords: ["png to webp", "jpg to webp", "convert to webp", "webp converter"],
+  },
+  {
+    id: "image-to-ico",
+    name: "Convert Image to ICO",
+    description: "Build a multi-size favicon.ico from any image.",
+    path: "/image-converter/to-ico",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Build a multi-size favicon.ico from PNG, JPEG, WebP or SVG in your browser. Pick 16, 32, 48, 64, 128 and 256px. No uploads.",
+    metaKeywords: ["png to ico", "favicon generator", "make favicon", "ico converter", "svg to ico"],
   },
 ];
