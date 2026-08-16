@@ -1,7 +1,8 @@
 import { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload } from "lucide-react";
-import { formatBytes, isImageBytes, isPdfBytes } from "@/lib/pdf";
+import { isEmbeddableImage } from "@/lib/image";
+import { formatBytes, isPdfBytes } from "@/lib/pdf";
 import { cn } from "@/lib/utils";
 
 export interface AcceptedPdf {
@@ -17,7 +18,7 @@ export const LARGE_FILE_WARNING_BYTES = 50 * 1024 * 1024;
 /** What this dropzone takes. Each kind supplies its own header check and copy. */
 const KINDS = {
   pdf: { noun: "PDF", accept: "application/pdf,.pdf", sniff: isPdfBytes },
-  image: { noun: "image", accept: "image/*", sniff: isImageBytes },
+  image: { noun: "image", accept: "image/*", sniff: isEmbeddableImage },
 } as const;
 
 interface PdfDropzoneProps {
