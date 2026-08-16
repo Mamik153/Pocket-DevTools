@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { isConvertibleImage, isEmbeddableImage, sniffImageFormat } from "@/lib/image";
+import {
+  dedupeNames,
+  fitWithin,
+  isConvertibleImage,
+  isEmbeddableImage,
+  letterbox,
+  outputName,
+  sniffImageFormat,
+} from "@/lib/image";
 
 const bytesOf = (text: string) => new TextEncoder().encode(text);
 const withBytes = (...values: number[]) => new Uint8Array(values);
@@ -96,5 +104,90 @@ describe("isConvertibleImage", () => {
 
   it("rejects a text file", () => {
     expect(isConvertibleImage(bytesOf("Dear team, please find attached"))).toBe(false);
+  });
+});
+
+describe("fitWithin", () => {
+  it("returns the original size when no bound is set", () => {
+    expect(fitWithin(1600, 900, null, null)).toEqual({ width: 1600, height: 900 });
+  });
+
+  it("never upscales a small image to fill a large bound", () => {
+    expect(fitWithin(100, 50, 1000, 1000)).toEqual({ width: 100, height: 50 });
+  });
+
+  it("constrains on width alone", () => {
+    expect(fitWithin(2000, 1000, 1000, null)).toEqual({ width: 1000, height: 500 });
+  });
+
+  it("constrains on height alone", () => {
+    expect(fitWithin(2000, 1000, null, 250)).toEqual({ width: 500, height: 250 });
+  });
+
+  it("uses whichever bound binds harder", () => {
+    expect(fitWithin(2000, 1000, 1000, 100)).toEqual({ width: 200, height: 100 });
+  });
+
+  it("never collapses a dimension to zero", () => {
+    expect(fitWithin(1000, 10, 5, null)).toEqual({ width: 5, height: 1 });
+  });
+
+  it("ignores a zero bound rather than dividing by it", () => {
+    expect(fitWithin(800, 600, 0, 0)).toEqual({ width: 800, height: 600 });
+  });
+});
+
+describe("letterbox", () => {
+  it("fills the box exactly when the aspect ratios match", () => {
+    expect(letterbox(64, 64, 32, 32)).toEqual({ dx: 0, dy: 0, dw: 32, dh: 32 });
+  });
+
+  it("centres a wide image with bars above and below", () => {
+    expect(letterbox(64, 32, 32, 32)).toEqual({ dx: 0, dy: 8, dw: 32, dh: 16 });
+  });
+
+  it("centres a tall image with bars left and right", () => {
+    expect(letterbox(32, 64, 32, 32)).toEqual({ dx: 8, dy: 0, dw: 16, dh: 32 });
+  });
+
+  // Unlike fitWithin, this one DOES upscale: a 16px source still has to fill
+  // a 256px ICO entry.
+  it("upscales a source smaller than the box", () => {
+    expect(letterbox(16, 16, 256, 256)).toEqual({ dx: 0, dy: 0, dw: 256, dh: 256 });
+  });
+});
+
+describe("outputName", () => {
+  it("swaps the extension", () => {
+    expect(outputName("shot.png", "jpeg")).toBe("shot.jpg");
+  });
+
+  it("only replaces the final extension", () => {
+    expect(outputName("archive.tar.png", "webp")).toBe("archive.tar.webp");
+  });
+
+  it("appends when there is no extension", () => {
+    expect(outputName("screenshot", "png")).toBe("screenshot.png");
+  });
+
+  it("uses .ico for the icon target", () => {
+    expect(outputName("logo.svg", "ico")).toBe("logo.ico");
+  });
+});
+
+describe("dedupeNames", () => {
+  it("leaves distinct names alone", () => {
+    expect(dedupeNames(["a.jpg", "b.jpg"])).toEqual(["a.jpg", "b.jpg"]);
+  });
+
+  it("suffixes repeats so a ZIP does not silently drop entries", () => {
+    expect(dedupeNames(["a.jpg", "a.jpg", "a.jpg"])).toEqual(["a.jpg", "a-2.jpg", "a-3.jpg"]);
+  });
+
+  it("suffixes before the extension", () => {
+    expect(dedupeNames(["report.tar.gz", "report.tar.gz"])).toEqual([
+      "report.tar.gz",
+      "report.tar-2.gz",
+    ]);
   });
 });
