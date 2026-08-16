@@ -207,3 +207,201 @@ export const buildIco = (entries: readonly IcoEntry[]): Uint8Array => {
 
   return out;
 };
+
+export interface ConvertSettings {
+  target: ConvertTarget;
+  /** 0-1. Ignored by PNG and ICO, which have no lossy knob. */
+  quality: number;
+  /** CSS colour, or null to keep transparency. JPEG must always pass a colour. */
+  backdrop: string | null;
+  maxWidth: number | null;
+  maxHeight: number | null;
+  icoSizes: readonly number[];
+  /** Longest edge, in px, at which an SVG is rasterised. */
+  svgRenderSize: number;
+}
+
+/** An SVG declaring enormous dimensions would otherwise allocate a huge canvas. */
+export const MAX_SVG_RENDER_PX = 4096;
+export const DEFAULT_SVG_RENDER_PX = 512;
+
+const MIME: Record<Exclude<ConvertTarget, "ico">, string> = {
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
+
+interface Decoded {
+  source: CanvasImageSource;
+  width: number;
+  height: number;
+  close: () => void;
+}
+
+const loadImageElement = (url: string, width?: number, height?: number) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("This image could not be decoded."));
+    if (width !== undefined) image.width = width;
+    if (height !== undefined) image.height = height;
+    image.src = url;
+  });
+
+/**
+ * SVG has to go through <img>: createImageBitmap rejects SVG blobs. Loaded this
+ * way the document renders in secure static mode — no scripts, no external
+ * fetches — and the blob: URL is same-origin, so the canvas does not taint.
+ *
+ * Two passes: the first reads the intrinsic size, the second re-rasterises at
+ * the target size. Drawing an <img> larger than it was laid out blurs it, and
+ * the intrinsic size is not knowable before the first load.
+ */
+const decodeSvg = async (bytes: Uint8Array, renderSize: number): Promise<Decoded> => {
+  const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: "image/svg+xml" }));
+  try {
+    const probe = await loadImageElement(url);
+    // A viewBox-only SVG reports 0; fall back to a square at the render size.
+    const intrinsicWidth = probe.naturalWidth || renderSize;
+    const intrinsicHeight = probe.naturalHeight || renderSize;
+    const capped = Math.min(renderSize, MAX_SVG_RENDER_PX);
+    const scale = capped / Math.max(intrinsicWidth, intrinsicHeight);
+    const width = Math.max(1, Math.round(intrinsicWidth * scale));
+    const height = Math.max(1, Math.round(intrinsicHeight * scale));
+    const sized = await loadImageElement(url, width, height);
+    return { source: sized, width, height, close: () => URL.revokeObjectURL(url) };
+  } catch (error) {
+    URL.revokeObjectURL(url);
+    throw error;
+  }
+};
+
+const decodeRaster = async (bytes: Uint8Array): Promise<Decoded> => {
+  const bitmap = await createImageBitmap(new Blob([bytes as BlobPart]));
+  return {
+    source: bitmap,
+    width: bitmap.width,
+    height: bitmap.height,
+    close: () => bitmap.close(),
+  };
+};
+
+const decodeImage = (
+  bytes: Uint8Array,
+  format: ImageFormat,
+  renderSize: number,
+): Promise<Decoded> => (format === "svg" ? decodeSvg(bytes, renderSize) : decodeRaster(bytes));
+
+/** Draw onto a fresh canvas of the given size, optionally over a solid ground. */
+const paint = (
+  decoded: Decoded,
+  canvasWidth: number,
+  canvasHeight: number,
+  placement: { dx: number; dy: number; dw: number; dh: number },
+  backdrop: string | null,
+): HTMLCanvasElement => {
+  const canvas = document.createElement("canvas");
+  canvas.width = canvasWidth;
+  canvas.height = canvasHeight;
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("Could not get a 2D canvas context.");
+  if (backdrop) {
+    context.fillStyle = backdrop;
+    context.fillRect(0, 0, canvasWidth, canvasHeight);
+  }
+  context.drawImage(decoded.source, placement.dx, placement.dy, placement.dw, placement.dh);
+  return canvas;
+};
+
+/** Free the backing store immediately rather than waiting for collection. */
+const releaseCanvas = (canvas: HTMLCanvasElement): void => {
+  canvas.width = 0;
+  canvas.height = 0;
+};
+
+const encodeCanvas = async (
+  canvas: HTMLCanvasElement,
+  mime: string,
+  quality?: number,
+): Promise<Blob> => {
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (result) => (result ? resolve(result) : reject(new Error("Could not encode the image."))),
+      mime,
+      quality,
+    );
+  });
+  // toBlob falls back to PNG when it cannot encode the requested type, which
+  // would hand the user a .webp that is really a PNG. Refuse to ship that.
+  if (blob.type !== mime) {
+    throw new Error(`This browser cannot encode ${mime.replace("image/", "").toUpperCase()}.`);
+  }
+  return blob;
+};
+
+const toIco = async (decoded: Decoded, settings: ConvertSettings): Promise<Blob> => {
+  const sizes = [...settings.icoSizes].sort((a, b) => a - b);
+  if (sizes.length === 0) throw new Error("Pick at least one icon size.");
+
+  const entries: IcoEntry[] = [];
+  for (const size of sizes) {
+    const canvas = paint(
+      decoded,
+      size,
+      size,
+      letterbox(decoded.width, decoded.height, size, size),
+      settings.backdrop,
+    );
+    const png = await encodeCanvas(canvas, "image/png");
+    releaseCanvas(canvas);
+    entries.push({ size, png: new Uint8Array(await png.arrayBuffer()) });
+  }
+  return new Blob([buildIco(entries) as BlobPart], { type: "image/x-icon" });
+};
+
+/**
+ * Convert one image. Everything happens on a canvas in this tab — no network
+ * call anywhere in this path.
+ */
+export const convertImage = async (
+  bytes: Uint8Array,
+  settings: ConvertSettings,
+): Promise<Blob> => {
+  const format = sniffImageFormat(bytes);
+  if (!format) throw new Error("This file is not an image we recognise.");
+
+  // For an icon, rasterise the vector at the largest size we will actually
+  // need rather than at the panel's render size.
+  const renderSize =
+    settings.target === "ico" && settings.icoSizes.length > 0
+      ? Math.max(...settings.icoSizes)
+      : settings.svgRenderSize;
+
+  const decoded = await decodeImage(bytes, format, renderSize);
+  try {
+    if (settings.target === "ico") return await toIco(decoded, settings);
+
+    const { width, height } = fitWithin(
+      decoded.width,
+      decoded.height,
+      settings.maxWidth,
+      settings.maxHeight,
+    );
+    const canvas = paint(
+      decoded,
+      width,
+      height,
+      { dx: 0, dy: 0, dw: width, dh: height },
+      settings.backdrop,
+    );
+    const blob = await encodeCanvas(
+      canvas,
+      MIME[settings.target],
+      settings.target === "png" ? undefined : settings.quality,
+    );
+    releaseCanvas(canvas);
+    return blob;
+  } finally {
+    decoded.close();
+  }
+};
