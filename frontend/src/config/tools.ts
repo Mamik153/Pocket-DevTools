@@ -84,6 +84,10 @@ export const tools: ToolDefinition[] = [
     description: "Grab a public video, track, or gallery from a link. A self-hosted fork of cobalt.",
     path: "/downloader",
     ctaLabel: "Open",
+    // Hidden until a cobalt instance is deployed. Without COBALT_API_URL the
+    // route answers 503, so advertising it on the home page just offers a
+    // broken tool. Flip back to true once the instance is live.
+    showOnHome: false,
     metaDescription:
       "Download public videos, audio, and galleries from a link. Self-hosted fork of cobalt, no ads and no tracking.",
     metaKeywords: [
