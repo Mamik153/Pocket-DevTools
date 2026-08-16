@@ -23,4 +23,7 @@ backend/.pytest_cache
 
 # Subagent-driven-development scratch (ledger, briefs, review packages).
 .superpowers/
+
+# Planning docs (brainstorm specs, implementation plans) stay local.
+docs/superpowers/
 .env*
