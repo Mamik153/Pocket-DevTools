@@ -136,3 +136,29 @@ describe("docxToMarkdown", () => {
     );
   });
 });
+
+describe("docxToMarkdown tables", () => {
+  const cell = (text: string) => `<w:tc><w:p><w:r><w:t>${text}</w:t></w:r></w:p></w:tc>`;
+  const table =
+    `<w:tbl>` +
+    `<w:tr>${cell("Name")}${cell("Role")}</w:tr>` +
+    `<w:tr>${cell("Ada")}${cell("Engineer")}</w:tr>` +
+    `</w:tbl>`;
+
+  // Word tables have no <th> row, so turndown-plugin-gfm keeps them as raw
+  // HTML. Without our own rule every table in every document lands in the
+  // Markdown as a wall of <table> markup.
+  it("emits a GFM table, not raw HTML", async () => {
+    const { markdown } = await docxToMarkdown(minimalDocx(table));
+    expect(markdown).not.toContain("<table");
+    expect(markdown).toContain("| Name | Role |");
+    expect(markdown).toContain("| --- | --- |");
+    expect(markdown).toContain("| Ada | Engineer |");
+  });
+
+  it("escapes pipes so they cannot break the column layout", async () => {
+    const piped = `<w:tbl><w:tr>${cell("a|b")}${cell("c")}</w:tr></w:tbl>`;
+    const { markdown } = await docxToMarkdown(minimalDocx(piped));
+    expect(markdown).toContain("a\\|b");
+  });
+});

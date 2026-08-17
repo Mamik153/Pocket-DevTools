@@ -1,3 +1,8 @@
+import type TurndownService from "turndown";
+
+/** The instance type, since we only import the class dynamically. */
+type TurndownServiceType = InstanceType<typeof TurndownService>;
+
 /**
  * Word document conversion. Everything here runs in the browser; no bytes leave
  * the tab. Heavy libraries are loaded through dynamic import so they stay out
@@ -83,6 +88,51 @@ const extensionFor = (contentType: string): string =>
   EXTENSION_BY_TYPE[contentType.toLowerCase()] ?? "bin";
 
 /**
+ * Render Word tables as GFM tables.
+ *
+ * turndown-plugin-gfm only converts a table whose first row is a real heading
+ * row — every cell a <th>, or wrapped in <thead>. Word tables have neither, and
+ * mammoth emits plain <tbody><tr><td>, so the plugin deliberately *keeps* them
+ * as raw HTML. Every table in every Word document would land in the Markdown as
+ * a wall of <table> markup.
+ *
+ * This promotes the first row to the header, which is what pandoc does with the
+ * same input.
+ *
+ * ponytail: no colspan/rowspan or nested tables — merged cells flatten to one
+ * cell per <td>. Markdown cannot express merges anyway; revisit only if someone
+ * needs the HTML fallback back for those.
+ */
+const addWordTableRule = (turndown: TurndownServiceType): void => {
+  const rowsOf = (table: HTMLTableElement) => Array.from(table.rows ?? []);
+  const hasHeaderRow = (table: HTMLTableElement) => {
+    const first = rowsOf(table)[0];
+    return Boolean(first) && Array.from(first.cells).every((cell) => cell.nodeName === "TH");
+  };
+
+  turndown.addRule("wordTable", {
+    filter: (node) => node.nodeName === "TABLE" && !hasHeaderRow(node as HTMLTableElement),
+    replacement: (_content, node) => {
+      const rows = rowsOf(node as HTMLTableElement);
+      if (rows.length === 0) return "";
+      const cellText = (cell: HTMLTableCellElement) =>
+        turndown
+          .turndown(cell.innerHTML)
+          // A cell cannot contain newlines in GFM; <br> is the only line break
+          // a Markdown table cell accepts.
+          .replace(/\n+/g, "<br>")
+          .replace(/\|/g, "\\|")
+          .trim();
+      const render = (row: HTMLTableRowElement) =>
+        `| ${Array.from(row.cells).map(cellText).join(" | ")} |`;
+      const width = Math.max(...rows.map((row) => row.cells.length));
+      const divider = `| ${Array(width).fill("---").join(" | ")} |`;
+      return `\n\n${render(rows[0])}\n${divider}\n${rows.slice(1).map(render).join("\n")}\n\n`;
+    },
+  });
+};
+
+/**
  * Convert a .docx to Markdown.
  *
  * mammoth deliberately produces "simple HTML" — it maps Word styles onto plain
@@ -123,6 +173,7 @@ export const docxToMarkdown = async (bytes: Uint8Array): Promise<MarkdownResult>
   });
   // Without the GFM plugin, turndown flattens tables into unreadable inline text.
   turndown.use(gfm);
+  addWordTableRule(turndown);
 
   return {
     markdown: turndown.turndown(html),
