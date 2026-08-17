@@ -1,6 +1,7 @@
 import { useCallback, useId, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Upload } from "lucide-react";
+import { isDocxBytes } from "@/lib/docx";
 import { isConvertibleImage, isEmbeddableImage } from "@/lib/image";
 import { formatBytes, isPdfBytes } from "@/lib/pdf";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,13 @@ const KINDS = {
   pdf: { noun: "PDF", accept: "application/pdf,.pdf", sniff: isPdfBytes },
   image: { noun: "image", accept: "image/*", sniff: isEmbeddableImage },
   convertible: { noun: "image", accept: "image/*,.svg", sniff: isConvertibleImage },
+  // Async, unlike the others: confirming a zip is a Word document means opening
+  // it, and fflate is behind a dynamic import.
+  docx: {
+    noun: "Word document",
+    accept: ".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    sniff: isDocxBytes,
+  },
 } as const;
 
 interface FileDropzoneProps {
@@ -66,8 +74,10 @@ export function FileDropzone({
       for (const file of files) {
         const bytes = new Uint8Array(await file.arrayBuffer());
         // Extension and MIME type are user-controlled. Only the header is evidence.
-        if (!sniff(bytes)) {
-          rejected.push(`${file.name} is not ${noun === "image" ? "an image" : "a PDF"}.`);
+        // sniff may be sync (magic bytes) or async (docx, which opens the zip);
+        // awaiting a boolean is still a boolean, so the other kinds are unaffected.
+        if (!(await sniff(bytes))) {
+          rejected.push(`${file.name} is not a valid ${noun}.`);
           continue;
         }
         if (file.size > LARGE_FILE_WARNING_BYTES) {

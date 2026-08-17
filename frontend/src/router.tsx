@@ -36,6 +36,15 @@ const ToWebpPage = lazy(() =>
 const ToIcoPage = lazy(() =>
   import("@/routes/ImageConverterPage").then((module) => ({ default: module.ToIcoPage })),
 );
+const DocxConverterIndex = lazy(() =>
+  import("@/routes/DocxConverterPage").then((module) => ({ default: module.DocxConverterIndex })),
+);
+const DocxToPdfPage = lazy(() =>
+  import("@/routes/DocxConverterPage").then((module) => ({ default: module.ToPdfPage })),
+);
+const DocxToMarkdownPage = lazy(() =>
+  import("@/routes/DocxConverterPage").then((module) => ({ default: module.ToMarkdownPage })),
+);
 const JsonBeautifierPage = lazy(() =>
   import("@/routes/JsonBeautifierPage").then((module) => ({
     default: module.JsonBeautifierPage,
@@ -206,6 +215,32 @@ const imageToIcoRoute = createRoute({
   component: withLazySuspense(ToIcoPage)
 });
 
+// Children declared explicitly, not generated: TanStack infers <Link to="">
+// types from statically declared routes, and a .map() widens them to string.
+const docxConverterRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/docx-converter",
+  component: Outlet
+});
+
+const docxConverterIndexRoute = createRoute({
+  getParentRoute: () => docxConverterRoute,
+  path: "/",
+  component: withLazySuspense(DocxConverterIndex)
+});
+
+const docxToPdfRoute = createRoute({
+  getParentRoute: () => docxConverterRoute,
+  path: "to-pdf",
+  component: withLazySuspense(DocxToPdfPage)
+});
+
+const docxToMarkdownRoute = createRoute({
+  getParentRoute: () => docxConverterRoute,
+  path: "to-markdown",
+  component: withLazySuspense(DocxToMarkdownPage)
+});
+
 const jsonBeautifierRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/json-beautifier",
@@ -289,6 +324,11 @@ const routeTree = rootRoute.addChildren([
     imageToPngRoute,
     imageToWebpRoute,
     imageToIcoRoute
+  ]),
+  docxConverterRoute.addChildren([
+    docxConverterIndexRoute,
+    docxToPdfRoute,
+    docxToMarkdownRoute
   ]),
   legacyAudioscribeRoute,
   jsonBeautifierRoute,
