@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { docKindMessage, docxToMarkdown, isDocxBytes, sniffDocKind } from "@/lib/docx";
+import {
+  docKindMessage,
+  docxToMarkdown,
+  isActionableWarning,
+  isDocxBytes,
+  sniffDocKind,
+} from "@/lib/docx";
 
 /** The three parts mammoth needs to treat a zip as a Word document. */
 export const minimalDocx = (bodyXml: string): Uint8Array =>
@@ -160,5 +166,26 @@ describe("docxToMarkdown tables", () => {
     const piped = `<w:tbl><w:tr>${cell("a|b")}${cell("c")}</w:tr></w:tbl>`;
     const { markdown } = await docxToMarkdown(minimalDocx(piped));
     expect(markdown).toContain("a\\|b");
+  });
+});
+
+describe("isActionableWarning", () => {
+  // Every candidate style map for List Paragraph was measured against a real
+  // document and each one dropped the <ol>. mammoth's numbering handling is
+  // already correct, so this warning reports a problem that does not exist.
+  it("hides the List Paragraph noise that fires on nearly every Word document", () => {
+    expect(
+      isActionableWarning("Unrecognised paragraph style: 'List Paragraph' (Style ID: ListParagraph)"),
+    ).toBe(false);
+  });
+
+  it("keeps every other unrecognised style, which may be a real loss", () => {
+    expect(
+      isActionableWarning("Unrecognised paragraph style: 'Fancy Quote' (Style ID: FancyQuote)"),
+    ).toBe(true);
+  });
+
+  it("keeps unrelated warnings", () => {
+    expect(isActionableWarning("An unrecognised element was ignored: w:sdt")).toBe(true);
   });
 });

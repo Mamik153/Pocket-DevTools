@@ -133,6 +133,19 @@ const addWordTableRule = (turndown: TurndownServiceType): void => {
 };
 
 /**
+ * "List Paragraph" is Word's standard style for every bulleted and numbered
+ * list, so this warning fires on virtually every real document. mammoth already
+ * renders those lists correctly from numbering.xml, and mapping the style would
+ * actively break them — measured against a real contract, every candidate
+ * mapping ("=> p:fresh", "=> ul > li:fresh", and the empty ignore form) dropped
+ * the <ol> entirely, turning 14 numbered clauses into paragraphs or bullets.
+ *
+ * Nothing was lost, so reporting it as a conversion problem is just wrong.
+ */
+export const isActionableWarning = (message: string): boolean =>
+  !/Unrecognised paragraph style: 'List Paragraph'/.test(message);
+
+/**
  * Convert a .docx to Markdown.
  *
  * mammoth deliberately produces "simple HTML" — it maps Word styles onto plain
@@ -178,6 +191,8 @@ export const docxToMarkdown = async (bytes: Uint8Array): Promise<MarkdownResult>
   return {
     markdown: turndown.turndown(html),
     images,
-    warnings: messages.filter((m) => m.type === "warning").map((m) => m.message),
+    warnings: messages
+      .filter((m) => m.type === "warning" && isActionableWarning(m.message))
+      .map((m) => m.message),
   };
 };
