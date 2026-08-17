@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { zipSync, strToU8 } from "fflate";
-import { docKindMessage, isDocxBytes, sniffDocKind } from "@/lib/docx";
+import { docKindMessage, docxToMarkdown, isDocxBytes, sniffDocKind } from "@/lib/docx";
 
 /** The three parts mammoth needs to treat a zip as a Word document. */
 export const minimalDocx = (bodyXml: string): Uint8Array =>
@@ -84,5 +84,55 @@ describe("docKindMessage", () => {
   it("distinguishes another Office file from junk", () => {
     expect(docKindMessage("other-zip")).toMatch(/spreadsheet|presentation/i);
     expect(docKindMessage("unknown")).not.toMatch(/spreadsheet/i);
+  });
+});
+
+/** A Word paragraph carrying a named style. */
+const styled = (style: string, text: string) =>
+  `<w:p><w:pPr><w:pStyle w:val="${style}"/></w:pPr><w:r><w:t>${text}</w:t></w:r></w:p>`;
+
+describe("docxToMarkdown", () => {
+  it("maps Word heading styles to Markdown headings", async () => {
+    const { markdown } = await docxToMarkdown(minimalDocx(styled("Heading1", "Title")));
+    expect(markdown).toContain("# Title");
+  });
+
+  it("preserves bold runs", async () => {
+    const body =
+      `<w:p><w:r><w:t xml:space="preserve">Hello </w:t></w:r>` +
+      `<w:r><w:rPr><w:b/></w:rPr><w:t>world</w:t></w:r></w:p>`;
+    const { markdown } = await docxToMarkdown(minimalDocx(body));
+    expect(markdown).toContain("**world**");
+  });
+
+  it("preserves italic runs", async () => {
+    const body = `<w:p><w:r><w:rPr><w:i/></w:rPr><w:t>emphasis</w:t></w:r></w:p>`;
+    const { markdown } = await docxToMarkdown(minimalDocx(body));
+    expect(markdown).toMatch(/_emphasis_|\*emphasis\*/);
+  });
+
+  it("keeps paragraphs separated", async () => {
+    const body = `<w:p><w:r><w:t>First</w:t></w:r></w:p><w:p><w:r><w:t>Second</w:t></w:r></w:p>`;
+    const { markdown } = await docxToMarkdown(minimalDocx(body));
+    expect(markdown).toContain("First\n\nSecond");
+  });
+
+  it("returns no images for a document that has none", async () => {
+    const { images } = await docxToMarkdown(minimalDocx(styled("Heading1", "Title")));
+    expect(images).toEqual([]);
+  });
+
+  // The minimal fixture declares no styles.xml, so mammoth warns that Heading1
+  // was referenced but not defined. It still maps it to <h1> via the default
+  // style map. Do NOT assert warnings is empty — this one is expected.
+  it("reports mammoth's warnings rather than swallowing them", async () => {
+    const { warnings } = await docxToMarkdown(minimalDocx(styled("Heading1", "Title")));
+    expect(warnings.join(" ")).toMatch(/Heading1/);
+  });
+
+  it("rejects a file that is not a docx", async () => {
+    await expect(docxToMarkdown(new TextEncoder().encode("nope"))).rejects.toThrow(
+      /not a Word document/i,
+    );
   });
 });

@@ -53,3 +53,80 @@ export const docKindMessage = (kind: DocKind): string => {
       return "";
   }
 };
+
+export interface DocxImage {
+  /** Path used in the Markdown link and as the ZIP entry name. */
+  name: string;
+  bytes: Uint8Array;
+}
+
+export interface MarkdownResult {
+  markdown: string;
+  images: DocxImage[];
+  /** mammoth's notes about anything it could not map. Shown, not swallowed. */
+  warnings: string[];
+}
+
+const EXTENSION_BY_TYPE: Record<string, string> = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "image/tiff": "tiff",
+  "image/x-emf": "emf",
+  "image/x-wmf": "wmf",
+};
+
+/** Falls back to bin rather than inventing an extension from an unknown type. */
+const extensionFor = (contentType: string): string =>
+  EXTENSION_BY_TYPE[contentType.toLowerCase()] ?? "bin";
+
+/**
+ * Convert a .docx to Markdown.
+ *
+ * mammoth deliberately produces "simple HTML" — it maps Word styles onto plain
+ * semantic elements and drops the rest. That is the right input for Markdown,
+ * which cannot express fonts or colours anyway. Visual fidelity is the PDF
+ * path's job, and it uses a different library for exactly that reason.
+ *
+ * Images are rewritten to images/image-N.<ext> as mammoth emits them, so no
+ * post-processing pass over the HTML is needed.
+ */
+export const docxToMarkdown = async (bytes: Uint8Array): Promise<MarkdownResult> => {
+  const kind = await sniffDocKind(bytes);
+  if (kind !== "docx") throw new Error(docKindMessage(kind));
+
+  const [{ default: mammoth }, { default: TurndownService }, { gfm }] = await Promise.all([
+    import("mammoth"),
+    import("turndown"),
+    import("turndown-plugin-gfm"),
+  ]);
+
+  const images: DocxImage[] = [];
+  const convertImage = mammoth.images.imgElement(async (image) => {
+    const buffer = await image.readAsArrayBuffer();
+    const name = `images/image-${images.length + 1}.${extensionFor(image.contentType)}`;
+    images.push({ name, bytes: new Uint8Array(buffer) });
+    return { src: name };
+  });
+
+  // Copy into a fresh buffer: a Uint8Array view may sit inside a larger
+  // ArrayBuffer, and mammoth would then read the whole thing.
+  const arrayBuffer = new Uint8Array(bytes).buffer;
+  const { value: html, messages } = await mammoth.convertToHtml({ arrayBuffer }, { convertImage });
+
+  const turndown = new TurndownService({
+    headingStyle: "atx",
+    codeBlockStyle: "fenced",
+    bulletListMarker: "-",
+  });
+  // Without the GFM plugin, turndown flattens tables into unreadable inline text.
+  turndown.use(gfm);
+
+  return {
+    markdown: turndown.turndown(html),
+    images,
+    warnings: messages.filter((m) => m.type === "warning").map((m) => m.message),
+  };
+};

@@ -26,6 +26,7 @@
     "fflate": "^0.8.3",
     "framer-motion": "latest",
     "lucide-react": "latest",
+    "mammoth": "^1.12.1",
     "mermaid": "^11.12.3",
     "pdfjs-dist": "^6.2.108",
     "react": "latest",
@@ -34,7 +35,9 @@
     "react-markdown": "latest",
     "rehype-highlight": "latest",
     "remark-gfm": "latest",
-    "tailwind-merge": "latest"
+    "tailwind-merge": "latest",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
   },
   "devDependencies": {
     "@tailwindcss/typography": "latest",
@@ -42,6 +45,7 @@
     "@types/node": "latest",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/turndown": "^5.0.6",
     "@vitejs/plugin-react": "latest",
     "tailwindcss": "latest",
     "typescript": "latest",
