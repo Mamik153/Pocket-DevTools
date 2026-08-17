@@ -13,6 +13,8 @@ import {
   Image as ImageIcon,
   FileImage,
   Star,
+  FileType,
+  FileCode,
   ScanSearch,
   Search,
   Sparkles,
@@ -58,6 +60,10 @@ const toolIcons: Record<ToolId, LucideIcon> = {
   "image-to-png": FileImage,
   "image-to-webp": ImageIcon,
   "image-to-ico": Star,
+  "docx-converter": FileType,
+  // Hidden sub-routes, but the map is keyed by every ToolId.
+  "docx-to-pdf": FileType,
+  "docx-to-markdown": FileCode,
 };
 
 type CategoryFilter = "all" | "pdf" | "json" | "ai" | "security" | "utils";

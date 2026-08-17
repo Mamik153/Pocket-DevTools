@@ -18,7 +18,10 @@ export type ToolId =
   | "image-to-jpeg"
   | "image-to-png"
   | "image-to-webp"
-  | "image-to-ico";
+  | "image-to-ico"
+  | "docx-converter"
+  | "docx-to-pdf"
+  | "docx-to-markdown";
 
 export type ToolPath =
   | "/markdown-to-pdf"
@@ -40,7 +43,10 @@ export type ToolPath =
   | "/image-converter/to-jpeg"
   | "/image-converter/to-png"
   | "/image-converter/to-webp"
-  | "/image-converter/to-ico";
+  | "/image-converter/to-ico"
+  | "/docx-converter"
+  | "/docx-converter/to-pdf"
+  | "/docx-converter/to-markdown";
 
 export interface ToolDefinition {
   id: ToolId;
@@ -264,5 +270,38 @@ export const tools: ToolDefinition[] = [
     metaDescription:
       "Build a multi-size favicon.ico from PNG, JPEG, WebP or SVG in your browser. Pick 16, 32, 48, 64, 128 and 256px. No uploads.",
     metaKeywords: ["png to ico", "favicon generator", "make favicon", "ico converter", "svg to ico"],
+  },
+  {
+    id: "docx-converter",
+    name: "DOCX Converter",
+    description: "Convert Word documents to PDF or Markdown without uploading a file.",
+    path: "/docx-converter",
+    ctaLabel: "Open",
+    sitemapPriority: "0.9",
+    metaDescription:
+      "Convert Word .docx files to PDF or Markdown in your browser. Keeps layout for PDF, structure for Markdown. Nothing is uploaded.",
+    metaKeywords: ["docx to pdf", "word to pdf", "docx to markdown", "word to markdown", "docx converter"],
+  },
+  {
+    id: "docx-to-pdf",
+    name: "Convert DOCX to PDF",
+    description: "Turn a Word document into a PDF, keeping its fonts, margins and page breaks.",
+    path: "/docx-converter/to-pdf",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Convert Word .docx to PDF in your browser, keeping the document's own fonts, margins and page breaks. No uploads.",
+    metaKeywords: ["docx to pdf", "word to pdf", "convert word to pdf", "doc to pdf"],
+  },
+  {
+    id: "docx-to-markdown",
+    name: "Convert DOCX to Markdown",
+    description: "Turn a Word document into structured Markdown, images included.",
+    path: "/docx-converter/to-markdown",
+    ctaLabel: "Open",
+    showOnHome: false,
+    metaDescription:
+      "Convert Word .docx to Markdown in your browser. Headings, tables and lists preserved, images exported alongside. No uploads.",
+    metaKeywords: ["docx to markdown", "word to markdown", "docx to md", "convert word to markdown"],
   },
 ];
