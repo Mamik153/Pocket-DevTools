@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, FileArchive, Loader2 } from "lucide-react";
 import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
+import { FileSizePreview } from "@/components/common/FileSizePreview";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -10,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { downloadBlob, inspectPdf, renderPdfToImages, zipFiles, type RenderedPage } from "@/lib/pdf";
+import { downloadBlob, formatBytes, inspectPdf, renderPdfToImages, zipFiles, type RenderedPage } from "@/lib/pdf";
 
 const DPI_PRESETS = [
   { dpi: 72, label: "72 DPI (screen)" },
@@ -32,14 +33,6 @@ export function ToImagePanel() {
 
   // Object URLs are not garbage collected. Revoke them when they are replaced.
   useEffect(() => () => pages.forEach((page) => URL.revokeObjectURL(page.url)), [pages]);
-
-  // PdfToolkit unmounts this panel whenever you leave the tool, including mid-render.
-  // That is not covered by the [pages] cleanup above: `pages` is still empty
-  // when the switch happens, and the render that resolves after unmount would
-  // otherwise setPages() on nothing and leak every object URL it created.
-  // Unmount is a supersession: bump the generation so the in-flight render
-  // takes the already-superseded branch below and revokes its own urls.
-  useEffect(() => () => { requestIdRef.current += 1; }, []);
 
   const render = useCallback(
     async (target: AcceptedFile) => {
@@ -72,7 +65,8 @@ export function ToImagePanel() {
           format,
           quality,
           onProgress: (done, total) => {
-            if (requestId !== requestIdRef.current) return;
+            // renderPdfToImages cleans up its URLs when this cancels an old preview.
+            if (requestId !== requestIdRef.current) throw new Error("Preview superseded");
             setProgress({ done, total });
           },
         });
@@ -93,6 +87,18 @@ export function ToImagePanel() {
     [dpi, format, quality],
   );
 
+  useEffect(() => {
+    if (!file) return;
+    setPages([]);
+    setFailure(null);
+    setProgress({ done: 0, total: 0 });
+    const timer = window.setTimeout(() => void render(file), 300);
+    return () => {
+      window.clearTimeout(timer);
+      requestIdRef.current += 1;
+    };
+  }, [file, render]);
+
   const baseName = file?.name.replace(/\.pdf$/i, "") ?? "page";
   const extension = format === "png" ? "png" : "jpg";
   // Pad to the width of the total page count so a 1000+ page document still
@@ -107,7 +113,6 @@ export function ToImagePanel() {
         label="Drop a PDF here, or click to choose"
         onAccept={([accepted]) => {
           setFile(accepted);
-          void render(accepted);
         }}
       />
 
@@ -166,6 +171,17 @@ export function ToImagePanel() {
         )}
       </div>
 
+      {file && (
+        <p aria-live="polite" aria-atomic="true">
+          <FileSizePreview
+            originalSize={file.size}
+            outputSize={pages.length > 0 ? pages.reduce((total, page) => total + page.blob.size, 0) : undefined}
+            pending={progress !== null}
+          />
+          {pages.length > 0 && <span className="text-xs text-muted-foreground">Combined image size before ZIP.</span>}
+        </p>
+      )}
+
       {progress && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -211,6 +227,7 @@ export function ToImagePanel() {
                   alt={`Page ${page.pageNumber}`}
                   className="w-full rounded-md border border-border"
                 />
+                <p className="text-xs text-muted-foreground tabular-nums">{formatBytes(page.blob.size)}</p>
                 <Button
                   variant="outline"
                   size="sm"

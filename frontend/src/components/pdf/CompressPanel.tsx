@@ -1,6 +1,7 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AlertTriangle, Download, Loader2 } from "lucide-react";
 import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
+import { FileSizePreview } from "@/components/common/FileSizePreview";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -77,7 +78,8 @@ export function CompressPanel() {
               dpi,
               quality,
               onProgress: (done, total) => {
-                if (requestId !== requestIdRef.current) return;
+                // Throw between pages so superseded previews release their resources.
+                if (requestId !== requestIdRef.current) throw new Error("Preview superseded");
                 setProgress({ done, total });
               },
             })
@@ -94,13 +96,24 @@ export function CompressPanel() {
     [aggressive, dpi, quality],
   );
 
+  useEffect(() => {
+    if (!file) return;
+    setResult(null);
+    setFailure(null);
+    setProgress({ done: 0, total: 0 });
+    const timer = window.setTimeout(() => void run(file), 300);
+    return () => {
+      window.clearTimeout(timer);
+      requestIdRef.current += 1;
+    };
+  }, [file, run]);
+
   return (
     <div className="space-y-4">
       <FileDropzone
         label="Drop a PDF here, or click to choose"
         onAccept={([accepted]) => {
           setFile(accepted);
-          void run(accepted);
         }}
       />
 
@@ -164,6 +177,12 @@ export function CompressPanel() {
         )}
       </div>
 
+      {file && !result && (
+        <p aria-live="polite">
+          <FileSizePreview originalSize={file.size} pending={progress !== null} />
+        </p>
+      )}
+
       {progress && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground tabular-nums">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -181,6 +200,9 @@ export function CompressPanel() {
 
       {result && file && (
         <div className="space-y-2 rounded-xl border border-border bg-card px-4 py-3">
+          <p aria-live="polite">
+            <FileSizePreview originalSize={result.originalSize} outputSize={result.bytes.length} />
+          </p>
           {result.saved === 0 ? (
             // Never dress a non-saving as a win, and never offer a bigger download.
             <p className="text-sm">
@@ -209,11 +231,6 @@ export function CompressPanel() {
                   and links do not work.
                 </p>
               )}
-              <p className="text-sm tabular-nums">
-                {formatBytes(result.originalSize)} → {formatBytes(result.bytes.length)}
-                {" · "}
-                {Math.round((result.saved / result.originalSize) * 100)}% smaller
-              </p>
               <Button onClick={() => downloadBytes(result.bytes, `compressed-${file.name}`)}>
                 <Download className="h-4 w-4" aria-hidden="true" />
                 Download compressed PDF
