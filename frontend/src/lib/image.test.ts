@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   buildIco,
+  convertImage,
   dedupeNames,
   fitWithin,
   isConvertibleImage,
@@ -8,6 +9,7 @@ import {
   letterbox,
   outputName,
   sniffImageFormat,
+  type ConvertSettings,
 } from "@/lib/image";
 
 const bytesOf = (text: string) => new TextEncoder().encode(text);
@@ -15,6 +17,36 @@ const withBytes = (...values: number[]) => new Uint8Array(values);
 
 /** An ISO-BMFF header: 4-byte box size, "ftyp", then the brand. */
 const ftyp = (brand: string) => bytesOf(`\0\0\0 ftyp${brand}    `);
+
+it.each(["jpeg", "png", "webp"] as const)("keeps %s dimensions when only quality changes", async (target) => {
+  const dimensions: number[][] = [];
+  const close = vi.fn();
+  vi.stubGlobal("createImageBitmap", async () => ({ width: 640, height: 360, close }));
+  vi.stubGlobal("document", {
+    createElement: () => ({
+      width: 0,
+      height: 0,
+      getContext: () => ({ fillRect() {}, drawImage() {} }),
+      toBlob(this: { width: number; height: number }, callback: BlobCallback, type: string) {
+        dimensions.push([this.width, this.height]);
+        callback(new Blob(["encoded"], { type }));
+      },
+    }),
+  });
+  const settings: ConvertSettings = {
+    target, quality: 0.92, backdrop: "#ffffff",
+    maxWidth: null, maxHeight: null, icoSizes: [16], svgRenderSize: 512,
+  };
+  try {
+    for (const quality of [0.92, 0.5, 0.1]) {
+      await convertImage(withBytes(0xff, 0xd8, 0xff), { ...settings, quality });
+    }
+    expect(dimensions).toEqual([[640, 360], [640, 360], [640, 360]]);
+    expect(close).toHaveBeenCalledTimes(3);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
 
 describe("sniffImageFormat", () => {
   it("detects JPEG", () => {

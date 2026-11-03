@@ -47,6 +47,7 @@ export function ConvertOptions({ target, settings, hasSvg, onChange }: ConvertOp
             onChange={(event) => onChange({ quality: Number(event.target.value) / 100 })}
             className="w-full accent-primary"
           />
+          <p className="text-xs text-muted-foreground">Quality changes file size, not image dimensions.</p>
         </div>
       )}
 
