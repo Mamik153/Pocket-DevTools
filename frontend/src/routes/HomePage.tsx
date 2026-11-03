@@ -1,6 +1,8 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Binary,
+  ArrowUpRight,
+  BookOpen,
   Braces,
   Clock3,
   Download,
@@ -18,6 +20,9 @@ import {
   ScanSearch,
   Search,
   Sparkles,
+  Layers,
+  Cpu,
+  SquareTerminal,
 } from "lucide-react";
 import { ToolCard } from "@/components/home/ToolCard";
 import {
@@ -28,7 +33,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { HeroDeveloperIllustration, EmptyStateIllustration } from "@/components/ui/illustrations";
-import { resourceSections } from "@/config/resources";
+import { resourceSections, type ResourceSection } from "@/config/resources";
 import { tools } from "@/config/tools";
 import type { ToolId, ToolDefinition } from "@/config/tools";
 import { Link } from "@tanstack/react-router";
@@ -67,6 +72,13 @@ const toolIcons: Record<ToolId, LucideIcon> = {
 };
 
 type CategoryFilter = "all" | "pdf" | "json" | "ai" | "security" | "utils";
+
+const resourceIcons: Record<ResourceSection["title"], LucideIcon> = {
+  "UI Components": Layers,
+  "AI Frameworks": Cpu,
+  "Online Compilers": SquareTerminal,
+  "Reading Material": BookOpen,
+};
 
 export function HomePage() {
   const prefersReducedMotion = useReducedMotion();
@@ -299,39 +311,55 @@ export function HomePage() {
         )}
 
         {/* Resources Section */}
-        <section className="space-y-4 max-w-7xl w-full mx-auto pb-10 pt-4">
+        <section aria-labelledby="resources-heading" className="space-y-5 max-w-7xl w-full mx-auto pb-10 pt-4">
           <div className="space-y-1">
-            <h2 className="text-2xl font-semibold tracking-tight text-foreground">Hand-picked Resources</h2>
+            <h2 id="resources-heading" className="text-2xl font-semibold tracking-tight text-foreground">Hand-picked Resources</h2>
             <p className="text-sm text-muted-foreground md:text-base">
               Curated links for components, AI tooling, sandboxes, and developer reference.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            {resourceSections.map((resource) => (
-              <Card key={resource.title} className="h-full border-border/70 bg-card/75 backdrop-blur-md hover:border-primary/30">
-                <CardHeader>
-                  <CardTitle className="text-base font-semibold text-foreground">{resource.title}</CardTitle>
-                  <CardDescription className="text-xs">
-                    Speed up your workflow with these trusted platforms.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {resource.links.map((link) => (
-                    <a
-                      key={link.href}
-                      href={link.href}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 transition-colors hover:underline hover:text-accent"
-                    >
-                      <span>{link.name}</span>
-                      <span className="text-xs text-muted-foreground">↗</span>
-                    </a>
-                  ))}
-                </CardContent>
-              </Card>
-            ))}
+          <div className="grid gap-5 md:grid-cols-2">
+            {resourceSections.map((resource) => {
+              const Icon = resourceIcons[resource.title];
+              return (
+                <Card key={resource.title} className="h-full rounded-2xl border-border bg-card shadow-none backdrop-blur-none transition-colors hover:shadow-none">
+                  <CardHeader className="p-5 pb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" aria-hidden="true" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <CardTitle className="text-base font-semibold text-foreground">{resource.title}</CardTitle>
+                        <p className="mt-0.5 text-xs text-muted-foreground">{resource.links.length} resources</p>
+                      </div>
+                    </div>
+                    <CardDescription className="pt-2 text-sm">{resource.description}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="px-3 pb-3">
+                    <ul className={`grid gap-1 ${resource.links.length > 4 ? "sm:grid-cols-2 sm:gap-x-2" : ""}`}>
+                      {resource.links.map((link) => (
+                        <li key={link.href} className="min-w-0">
+                          <a
+                            href={link.href}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="group flex min-h-16 items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-foreground transition-colors hover:bg-secondary/50 focus-visible:bg-secondary/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                          >
+                            <span className="min-w-0">
+                              <span className="block break-words text-sm font-medium group-hover:text-primary group-focus-visible:text-primary">{link.name}</span>
+                              <span className="mt-0.5 block truncate text-xs text-muted-foreground">{new URL(link.href).hostname.replace(/^www\./, "")}</span>
+                            </span>
+                            <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-primary group-focus-visible:text-primary" aria-hidden="true" />
+                            <span className="sr-only">(opens in a new tab)</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         </section>
       </section>

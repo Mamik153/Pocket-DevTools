@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Download, Loader2, X } from "lucide-react";
 import { FileDropzone, type AcceptedFile } from "@/components/common/FileDropzone";
+import { FileSizePreview } from "@/components/common/FileSizePreview";
 import { ConvertOptions } from "@/components/image/ConvertOptions";
+import { ImageThumbnail } from "@/components/image/ImageThumbnail";
 import { Button } from "@/components/ui/button";
 import {
   convertImage,
@@ -13,13 +15,11 @@ import {
   type ConvertSettings,
   type ConvertTarget,
 } from "@/lib/image";
-import { downloadBlob, formatBytes, zipFiles } from "@/lib/pdf";
+import { downloadBlob, zipFiles } from "@/lib/pdf";
 
-interface Row extends AcceptedFile {
+interface Result {
   output: Blob | null;
   error: string | null;
-  /** Animated sources convert their first frame only; say so rather than hide it. */
-  note: string | null;
 }
 
 const initialSettings = (target: ConvertTarget): ConvertSettings => ({
@@ -34,46 +34,26 @@ const initialSettings = (target: ConvertTarget): ConvertSettings => ({
 });
 
 export function ConvertPanel({ target }: { target: ConvertTarget }) {
-  const [rows, setRows] = useState<Row[]>([]);
+  const [files, setFiles] = useState<AcceptedFile[]>([]);
+  const [results, setResults] = useState<Record<string, Result>>({});
   const [settings, setSettings] = useState<ConvertSettings>(() => initialSettings(target));
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   // Generation counter: guards against a superseded run resolving after a newer
   // one. Same pattern as ImageToPdfPanel, UnlockPanel and CompressPanel.
   const requestIdRef = useRef(0);
 
-  // Abandon any in-flight batch when this panel unmounts.
-  useEffect(
-    () => () => {
-      requestIdRef.current += 1;
-    },
-    [],
-  );
-
   const addFiles = useCallback((files: AcceptedFile[]) => {
-    setRows((current) => [
-      ...current,
-      ...files.map((file) => {
-        const format = sniffImageFormat(file.bytes);
-        return {
-          ...file,
-          output: null,
-          error: null,
-          note:
-            format === "gif" || format === "webp"
-              ? "Animated sources convert their first frame."
-              : null,
-        };
-      }),
-    ]);
+    setFiles((current) => [...current, ...files]);
   }, []);
 
-  const run = async (current: Row[], activeSettings: ConvertSettings) => {
+  const run = useCallback(async (current: AcceptedFile[], activeSettings: ConvertSettings) => {
     const requestId = ++requestIdRef.current;
     setProgress({ done: 0, total: current.length });
 
     // Sequential on purpose: converting thirty large images in parallel is how
     // a tab runs out of memory.
     for (let index = 0; index < current.length; index += 1) {
+      if (requestId !== requestIdRef.current) return;
       const row = current[index];
       let output: Blob | null = null;
       let error: string | null = null;
@@ -84,22 +64,39 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
       }
       if (requestId !== requestIdRef.current) return;
       // One bad file fails its own row; the rest of the batch carries on.
-      setRows((rowsNow) =>
-        rowsNow.map((entry) => (entry.id === row.id ? { ...entry, output, error } : entry)),
-      );
+      setResults((current) => ({ ...current, [row.id]: { output, error } }));
       setProgress({ done: index + 1, total: current.length });
     }
 
     if (requestId === requestIdRef.current) setProgress(null);
-  };
+  }, []);
+
+  useEffect(() => {
+    setResults({});
+    setProgress(files.length > 0 ? { done: 0, total: files.length } : null);
+    // Coalesce slider events before decoding full-resolution images.
+    const timer = window.setTimeout(() => {
+      if (files.length > 0) void run(files, settings);
+    }, 250);
+    return () => {
+      window.clearTimeout(timer);
+      requestIdRef.current += 1;
+    };
+  }, [files, settings, run]);
 
   const onSettingsChange = (patch: Partial<ConvertSettings>) => {
-    const next = { ...settings, ...patch };
-    setSettings(next);
-    // Source bytes are already in memory, so re-running costs no re-upload.
-    if (rows.some((row) => row.output || row.error)) void run(rows, next);
+    setSettings((current) => ({ ...current, ...patch }));
   };
 
+  const rows = files.map((file) => {
+    const format = sniffImageFormat(file.bytes);
+    return {
+      ...file,
+      output: results[file.id]?.output ?? null,
+      error: results[file.id]?.error ?? null,
+      note: format === "gif" || format === "webp" ? "Animated sources convert their first frame." : null,
+    };
+  });
   const converted = rows.filter((row) => row.output);
   const hasSvg = rows.some((row) => sniffImageFormat(row.bytes) === "svg");
 
@@ -146,18 +143,37 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
       />
 
       {rows.length > 0 && (
+        <p aria-live="polite" aria-atomic="true">
+          <FileSizePreview
+            originalSize={rows.reduce((total, row) => total + row.size, 0)}
+            outputSize={
+              converted.length === rows.length
+                ? converted.reduce((total, row) => total + (row.output?.size ?? 0), 0)
+                : undefined
+            }
+            pending={progress !== null}
+          />
+          {settled && rows.some((row) => row.error) && (
+            <span className="text-xs text-destructive">Some files failed. Sizes below show each result.</span>
+          )}
+        </p>
+      )}
+
+      {rows.length > 0 && (
         <ul className="space-y-2">
           {rows.map((row) => (
             <li
               key={row.id}
               className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 text-sm"
             >
+              {row.output && <ImageThumbnail blob={row.output} />}
               <span className="min-w-0 flex-1">
                 <span className="block truncate font-medium">{row.name}</span>
-                <span className="block text-xs text-muted-foreground tabular-nums">
-                  {formatBytes(row.size)}
-                  {row.output ? ` → ${formatBytes(row.output.size)}` : ""}
-                </span>
+                <FileSizePreview
+                  originalSize={row.size}
+                  outputSize={row.output?.size}
+                  pending={!row.output && !row.error}
+                />
                 {row.error && (
                   <span role="alert" className="block text-xs text-destructive">
                     {row.error}
@@ -180,7 +196,7 @@ export function ConvertPanel({ target }: { target: ConvertTarget }) {
               <button
                 type="button"
                 aria-label={`Remove ${row.name}`}
-                onClick={() => setRows((current) => current.filter((entry) => entry.id !== row.id))}
+                onClick={() => setFiles((current) => current.filter((entry) => entry.id !== row.id))}
                 className="rounded-md p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <X className="h-4 w-4" aria-hidden="true" />
